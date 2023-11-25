@@ -26,6 +26,7 @@
 
 #include "io/osd.h"
 #include "io/osd_hud.h"
+#include "io/displayport_msp_bf_compat.h"
 
 #include "drivers/display.h"
 #include "drivers/display_canvas.h"
@@ -127,7 +128,7 @@ void osdHudDrawPoi(uint32_t poiDistance, int16_t poiDirection, int32_t poiAltitu
     uint8_t center_x;
     uint8_t center_y;
     bool poi_is_oos = 0;
-    char buff[4];
+    char buff[5];
     int altc = 0;
 
     uint8_t minX = osdConfig()->hud_margin_h + 2;
@@ -216,6 +217,8 @@ void osdHudDrawPoi(uint32_t poiDistance, int16_t poiDirection, int32_t poiAltitu
     }
 
     // Distance
+    uint8_t digits_a = 4U;  // Declare the number of digits for each distance field
+    uint8_t digits_b = 3U;
 
     if (poiType > 0 && 
         ((millis() / 1000) % (osdConfig()->hud_radar_alt_difference_display_time + osdConfig()->hud_radar_distance_display_time) < (osdConfig()->hud_radar_alt_difference_display_time % (osdConfig()->hud_radar_alt_difference_display_time + osdConfig()->hud_radar_distance_display_time)))
@@ -249,25 +252,32 @@ void osdHudDrawPoi(uint32_t poiDistance, int16_t poiDirection, int32_t poiAltitu
         }
 
         buff[0] = (poiAltitude >= 0) ? SYM_AH_DIRECTION_UP : SYM_AH_DIRECTION_DOWN;
-    } else { // Display the distance by default 
+    } else { // Display the distance by default
+        #ifndef DISABLE_MSP_BF_COMPAT // IF BFCOMPAT is not supported, there's no need to check for it and change the values
+            if (isBfCompatibleVideoSystem(osdConfig())) {
+                // Add one digit so up no switch to scaled decimal occurs above 99
+                digits_a = 5U;
+                digits_b = 4U;
+            }
+        #endif 
         switch ((osd_unit_e)osdConfig()->units) {
             case OSD_UNIT_UK:
                 FALLTHROUGH;
             case OSD_UNIT_IMPERIAL:
                 {
                     if (poiType == 1) {
-                        osdFormatCentiNumber(buff, CENTIMETERS_TO_CENTIFEET(poiDistance * 100), FEET_PER_MILE, 0, 4, 4, false);
+                        osdFormatCentiNumber(buff, CENTIMETERS_TO_CENTIFEET(poiDistance * 100), FEET_PER_MILE, 0, 4, digits_a, false);
                     } else {
-                        osdFormatCentiNumber(buff, CENTIMETERS_TO_CENTIFEET(poiDistance * 100), FEET_PER_MILE, 0, 3, 3, false);
+                        osdFormatCentiNumber(buff, CENTIMETERS_TO_CENTIFEET(poiDistance * 100), FEET_PER_MILE, 0, 3, digits_b, false);
                     }
                 }
                 break;
             case OSD_UNIT_GA:
                 {
                     if (poiType == 1) {
-                        osdFormatCentiNumber(buff, CENTIMETERS_TO_CENTIFEET(poiDistance * 100), (uint32_t)FEET_PER_NAUTICALMILE, 0, 4, 4, false);
+                        osdFormatCentiNumber(buff, CENTIMETERS_TO_CENTIFEET(poiDistance * 100), (uint32_t)FEET_PER_NAUTICALMILE, 0, 4, digits_a, false);
                     } else {
-                        osdFormatCentiNumber(buff, CENTIMETERS_TO_CENTIFEET(poiDistance * 100), (uint32_t)FEET_PER_NAUTICALMILE, 0, 3, 3, false);
+                        osdFormatCentiNumber(buff, CENTIMETERS_TO_CENTIFEET(poiDistance * 100), (uint32_t)FEET_PER_NAUTICALMILE, 0, 3, digits_b, false);
                     }
                 }
                 break;
@@ -278,21 +288,35 @@ void osdHudDrawPoi(uint32_t poiDistance, int16_t poiDirection, int32_t poiAltitu
             case OSD_UNIT_METRIC:
                 {
                     if (poiType == 1) {
-                        osdFormatCentiNumber(buff, poiDistance * 100, METERS_PER_KILOMETER, 0, 4, 4, false);
+                        osdFormatCentiNumber(buff, poiDistance * 100, METERS_PER_KILOMETER, 0, 4, digits_a, false);
                     } else {
-                        osdFormatCentiNumber(buff, poiDistance * 100, METERS_PER_KILOMETER, 0, 3, 3, false);
+                        osdFormatCentiNumber(buff, poiDistance * 100, METERS_PER_KILOMETER, 0, 3, digits_b, false);
                     }
                 }
                 break;
         }
     }
 
-    osdHudWrite(poi_x - 1, poi_y + 1, buff[0], 1);
-    osdHudWrite(poi_x , poi_y + 1, buff[1], 1);
-    osdHudWrite(poi_x + 1, poi_y + 1, buff[2], 1);
-    if (poiType == 1) {
+    if(digits_a == 4U)
+    {
+        osdHudWrite(poi_x - 1, poi_y + 1, buff[0], 1);
+        osdHudWrite(poi_x , poi_y + 1, buff[1], 1);
+        osdHudWrite(poi_x + 1, poi_y + 1, buff[2], 1);
+        if (poiType == 1) {
+            osdHudWrite(poi_x + 2, poi_y + 1, buff[3], 1);
+        }
+    } 
+    #ifndef DISABLE_MSP_BF_COMPAT // IF BFCOMPAT is not supported, there's no need to check for it and change the values
+    else if (digits_a == 5U) {
+        osdHudWrite(poi_x - 1, poi_y + 1, buff[0], 1);
+        osdHudWrite(poi_x , poi_y + 1, buff[1], 1);
+        osdHudWrite(poi_x + 1, poi_y + 1, buff[2], 1);
         osdHudWrite(poi_x + 2, poi_y + 1, buff[3], 1);
+        if (poiType == 1) {
+            osdHudWrite(poi_x + 3, poi_y + 1, buff[4], 1);
+        }
     }
+    #endif
 }
 
 /*

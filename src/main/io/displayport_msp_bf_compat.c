@@ -734,6 +734,35 @@ uint8_t getBfCharacter(uint8_t ch, uint8_t page)
         return BF_SYM_HUD_ARROWS_D3;
 */
 
+    // Reference: https://github.com/iNavFlight/inav-configurator/blob/master/resources/osd/INAV%20Character%20Map.md
+    case SYM_HUD_CARDINAL:
+        return BF_SYM_ARROW_SOUTH;
+
+    case SYM_HUD_CARDINAL + 1:
+    case SYM_HUD_CARDINAL + 2:
+        return BF_SYM_ARROW_15;     // SW oriented arrow
+
+    case SYM_HUD_CARDINAL + 3:
+        return BF_SYM_ARROW_WEST;
+
+    case SYM_HUD_CARDINAL + 4:
+    case SYM_HUD_CARDINAL + 5:
+        return BF_SYM_ARROW_11;     // NW oriented arrow
+
+    case SYM_HUD_CARDINAL + 6:
+        return BF_SYM_ARROW_NORTH;
+
+    case SYM_HUD_CARDINAL + 7:
+    case SYM_HUD_CARDINAL + 8:
+        return BF_SYM_ARROW_7;      // NE oriented arrow
+
+    case SYM_HUD_CARDINAL + 9:
+        return BF_SYM_ARROW_EAST;
+
+    case SYM_HUD_CARDINAL + 10:
+    case SYM_HUD_CARDINAL + 11:
+        return BF_SYM_ARROW_3;      // SE oriented arrow
+
     case SYM_SERVO_PAN_IS_CENTRED:
         return 'C'; // Centered pan servo
 
