@@ -238,7 +238,7 @@ uint8_t getBfCharacter(uint8_t ch, uint8_t page)
 
     case SYM_MI:
         return BF_SYM_MILES;
-/*
+
     case SYM_NM:
         return BF_SYM_NM;
 */
@@ -734,6 +734,16 @@ uint8_t getBfCharacter(uint8_t ch, uint8_t page)
     case SYM_HUD_ARROWS_D3:
         return BF_SYM_HUD_ARROWS_D3;
 */
+
+    case SYM_SERVO_PAN_IS_CENTRED:
+        return 'C'; // Centered pan servo
+
+    case SYM_SERVO_PAN_IS_OFFSET_L:
+        return 'L'; // Pan servo offset to the left
+
+    case SYM_SERVO_PAN_IS_OFFSET_R:
+        return 'R'; // Pan servo is offset to the right
+
     default:
         break;
     }
