@@ -208,7 +208,7 @@ uint8_t getBfCharacter(uint8_t ch, uint8_t page)
 
     case SYM_TOTAL:
         return BF_SYM_TOTAL_DISTANCE;
-/*
+
     case SYM_ALT_KM:
         return 'K';
 
@@ -219,7 +219,7 @@ uint8_t getBfCharacter(uint8_t ch, uint8_t page)
         return BF_SYM_M;
 
     case SYM_DIST_KM:
-        return BF_SYM_KM;
+        return SYM_ALT_KM;
 
     case SYM_DIST_FT:
         return BF_SYM_FT;
@@ -235,13 +235,14 @@ uint8_t getBfCharacter(uint8_t ch, uint8_t page)
 
     case SYM_KM:
         return BF_SYM_KM;
-
+/*
     case SYM_MI:
         return BF_SYM_MILES;
 
     case SYM_NM:
         return BF_SYM_NM;
 */
+
     case SYM_WIND_HORIZONTAL:
         return 'W';     // W for wind
 
@@ -252,6 +253,7 @@ uint8_t getBfCharacter(uint8_t ch, uint8_t page)
     case SYM_3D_KT:
         return BF_SYM_3D_KT;
 */
+
     case SYM_AIR:
         return 'A';     // A for airspeed
 
