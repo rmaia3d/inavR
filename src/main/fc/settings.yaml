@@ -3671,7 +3671,21 @@ groups:
         default_value: 1000
         min: 500
         max: 5000
-
+      
+      - name: osd_map2d_vmargin
+        description: OSD 2D Map vertical lines margin (on top and bottom, spaces where nothing will be drawn)
+        field: map2d_vmargin
+        default_value: 3
+        min: 0
+        max: 10
+      
+      - name: osd_map2d_hmargin
+        description: OSD 2D Map horizontal lines margin (on left and right)
+        field: map2d_hmargin
+        default_value: 5
+        min: 0
+        max: 15     
+        
   - name: PG_OSD_COMMON_CONFIG
     type: osdCommonConfig_t
     headers: ["io/osd_common.h"]

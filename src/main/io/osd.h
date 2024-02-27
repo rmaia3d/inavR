@@ -459,6 +459,9 @@ typedef struct osdConfig_s {
     bool            use_pilot_logo;                     // If enabled, the pilot logo (last 40 characters of page 2 font) will be used with the INAV logo.
     uint8_t         inav_to_pilot_logo_spacing;         // The space between the INAV and pilot logos, if pilot logo is used. This number may be adjusted so that it fits the odd/even col width.
     uint16_t        arm_screen_display_time;            // Length of time the arm screen is displayed
+
+    uint8_t         map2d_vmargin; // Vertical lines margin for 2D map (lines where nothing will be drawn)
+    uint8_t         map2d_hmargin; // Horizontal lines margin for 2D map
 } osdConfig_t;
 
 PG_DECLARE(osdConfig_t, osdConfig);
