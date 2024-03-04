@@ -2424,23 +2424,41 @@ static bool osdDrawSingleElement(uint8_t item)
             static timeMs_t snrUpdated = 0;
             int8_t snrFiltered = pt1FilterApply4(&snrFilterState, rxLinkStatistics.uplinkSNR, 0.5f, MS2S(millis() - snrUpdated));
             snrUpdated = millis();
-
+            
+            bool bfcompat = false;
+#ifndef DISABLE_MSP_BF_COMPAT // IF BFCOMPAT is not supported, there's no need to check for it and change the values
+            if (isBfCompatibleVideoSystem(osdConfig())) {
+                bfcompat = true;
+            }
+#endif
             const char* showsnr = "-20";
             const char* hidesnr = "   ";
             if (snrFiltered > osdConfig()->snr_alarm) {
                 if (cmsInMenu) {
-                    buff[0] = SYM_SNR;
-                    tfp_sprintf(buff + 1, "%s%c", showsnr, SYM_DB);
+                    if(bfcompat) {                        
+                        tfp_sprintf(buff, "SNR %sDB", showsnr);
+                    } else {
+                        buff[0] = SYM_SNR;
+                        tfp_sprintf(buff + 1, "%s%c", showsnr, SYM_DB);
+                    }
                 } else {
                     buff[0] = SYM_BLANK;
                     tfp_sprintf(buff + 1, "%s%c", hidesnr, SYM_BLANK);
                 }
             } else if (snrFiltered <= osdConfig()->snr_alarm) {
-                buff[0] = SYM_SNR;
-                if (snrFiltered <= -10) {
-                    tfp_sprintf(buff + 1, "%3d%c", snrFiltered, SYM_DB);
+                if(bfcompat) {
+                    if (snrFiltered <= -10) {
+                        tfp_sprintf(buff, "SNR%3d", snrFiltered);
+                    } else {
+                        tfp_sprintf(buff, "SNR %2d", snrFiltered);
+                    }
                 } else {
-                    tfp_sprintf(buff + 1, "%2d%c%c", snrFiltered, SYM_DB, ' ');
+                    buff[0] = SYM_SNR;
+                    if (snrFiltered <= -10) {
+                        tfp_sprintf(buff + 1, "%3d%c", snrFiltered, SYM_DB);
+                    } else {
+                        tfp_sprintf(buff + 1, "%2d%c%c", snrFiltered, SYM_DB, ' ');
+                    }
                 }
             }
             break;
@@ -2448,10 +2466,21 @@ static bool osdDrawSingleElement(uint8_t item)
 
     case OSD_CRSF_TX_POWER:
         {
-            if (!failsafeIsReceivingRxData())
+            bool bfcompat = false;
+#ifndef DISABLE_MSP_BF_COMPAT // IF BFCOMPAT is not supported, there's no need to check for it and change the values
+            if (isBfCompatibleVideoSystem(osdConfig())) {
+                bfcompat = true;
+            }
+#endif
+            if (!failsafeIsReceivingRxData()) {
                 tfp_sprintf(buff, "%s%c", "    ", SYM_BLANK);
-            else
-                tfp_sprintf(buff, "%4d%c", rxLinkStatistics.uplinkTXPower, SYM_MW);
+            } else {
+                if(bfcompat) {
+                    tfp_sprintf(buff, "%4d%cW", rxLinkStatistics.uplinkTXPower, SYM_DIST_M);    // Approximate mW with the 0x0C DJI character (small "m" used for meters)
+                } else {
+                    tfp_sprintf(buff, "%4d%c", rxLinkStatistics.uplinkTXPower, SYM_MW);
+                }
+            }
             break;
         }
 #endif
