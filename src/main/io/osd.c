@@ -2384,29 +2384,42 @@ static bool osdDrawSingleElement(uint8_t item)
         }
     case OSD_CRSF_LQ:
         {
-            buff[0] = SYM_LQ;
+            bool bfcompat = false;
+#ifndef DISABLE_MSP_BF_COMPAT // IF BFCOMPAT is not supported, there's no need to check for it and change the values
+            if (isBfCompatibleVideoSystem(osdConfig())) {
+                bfcompat = true;
+            }
+#endif
+            uint8_t buff_offset = 1U;
+            if(bfcompat) {
+                buff[0] = 'L';
+                buff[1] = 'Q';
+                buff_offset = 2U;
+            } else {
+                buff[0] = SYM_LQ;
+            }            
             int16_t statsLQ = rxLinkStatistics.uplinkLQ;
             int16_t scaledLQ = scaleRange(constrain(statsLQ, 0, 100), 0, 100, 170, 300);
             switch (osdConfig()->crsf_lq_format) {
                 case OSD_CRSF_LQ_TYPE1:
                     if (!failsafeIsReceivingRxData()) {
-                        tfp_sprintf(buff+1, "%3d", 0);
+                        tfp_sprintf(buff+buff_offset, "%3d", 0);
                     } else {
-                        tfp_sprintf(buff+1, "%3d", rxLinkStatistics.uplinkLQ);
+                        tfp_sprintf(buff+buff_offset, "%3d", rxLinkStatistics.uplinkLQ);
                     }
                     break;
                 case OSD_CRSF_LQ_TYPE2:
                     if (!failsafeIsReceivingRxData()) {
-                        tfp_sprintf(buff+1, "%s:%3d", " ", 0);
+                        tfp_sprintf(buff+buff_offset, "%s:%3d", " ", 0);
                     } else {
-                        tfp_sprintf(buff+1, "%d:%3d", rxLinkStatistics.rfMode, rxLinkStatistics.uplinkLQ);
+                        tfp_sprintf(buff+buff_offset, "%d:%3d", rxLinkStatistics.rfMode, rxLinkStatistics.uplinkLQ);
                     }
                     break;
                 case OSD_CRSF_LQ_TYPE3:
                     if (!failsafeIsReceivingRxData()) {
-                        tfp_sprintf(buff+1, "%3d", 0);
+                        tfp_sprintf(buff+buff_offset, "%3d", 0);
                     } else {
-                        tfp_sprintf(buff+1, "%3d", rxLinkStatistics.rfMode >= 2 ? scaledLQ : rxLinkStatistics.uplinkLQ);
+                        tfp_sprintf(buff+buff_offset, "%3d", rxLinkStatistics.rfMode >= 2 ? scaledLQ : rxLinkStatistics.uplinkLQ);
                     }
                     break;
             }
