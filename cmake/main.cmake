@@ -5,7 +5,7 @@ set(MAIN_INCLUDE_DIRS
 )
 
 set(MAIN_DEFINITIONS
-    __FORKNAME__=inav
+    __FORKNAME__=inavr
     __REVISION__="${GIT_REV}"
 )
 
