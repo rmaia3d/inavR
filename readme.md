@@ -1,3 +1,33 @@
+# INAVR - Custom fork of Inav
+
+This is an unofficial version of Inav, thus the added "R" to the end and also different versioning numbers.
+
+I started this fork to be able to share with the rest of the community some changes and improvements which I have been using on my own planes and quads for quite some time. 
+
+Most of the changes so far are focused on the DJI O3 OSD, which the official implementation has left a lot to be desired, and internal politics prevented most of these improvements from being merged into the main Inav code. 
+
+Here's an example of the O3 OSD that's possible with this fork:
+![O3_OSD_improved](InavR_O3_OSD_prev1.JPG)
+
+These changes are added on top of the most recently released official version of Inav (7.1.1).
+
+Compiled binaries from the code in this branch are available [in this Google Drive folder](https://drive.google.com/drive/folders/1ylWco9k0QQajGhIPQsC12iD4LPA3YMZ_?usp=sharing). Look under the v7.2.x sub-folder.
+
+The software is still Inav through and through, so all the steps for flashing, configuring, tuning and adjusting are the same as the ones for the official version. 
+
+To flash from the compiled binaries:
+* Go into the firmware flasher screen of the Inav Configurator
+* Click the "Load firmware [Local]" button (on the bottom right of the window)
+* Select the .hex file you have downloaded to your computer (make sure you downloaded the correct target for your FC)
+* Make sure "full chip erase" option is selected (on the top left of the window)
+* Click "Flash firmware"
+
+![LoadLocalFirmware](LoadLocalFirmware.png)
+
+> The same diff-all method of transferring settings between flashes applies and can be used.
+
+Below is the text from the official Inav readme.
+
 # INAV - navigation capable flight controller
 
 # F411 PSA
