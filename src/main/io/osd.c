@@ -2613,21 +2613,63 @@ static bool osdDrawSingleElement(uint8_t item)
         break;
 
     case OSD_ATTITUDE_ROLL:
-        buff[0] = SYM_ROLL_LEVEL;
-        if (ABS(attitude.values.roll) >= 1)
-            buff[0] += (attitude.values.roll < 0 ? -1 : 1);
-        osdFormatCentiNumber(buff + 1, DECIDEGREES_TO_CENTIDEGREES(ABS(attitude.values.roll)), 0, 1, 0, 3, false);
-        break;
+        {
+            uint8_t buff_offset = 1U;
+            buff[0] = SYM_ROLL_LEVEL;
+            if(bfcompat) {
+                if (ABS(attitude.values.roll) >= 1) {
+                    if (attitude.values.roll < 0) {
+                        // Left roll
+                        buff[1] = SYM_DIRECTION + 6U;   // This will be remapped in getBfCharacter() to a left pointing arrow
+                    } else {
+                        // Right roll
+                        buff[1] = SYM_DIRECTION + 2U;   // This will be remapped in getBfCharacter() to a right pointing arrow
+                    }
+                } else {
+                    buff[1] = SYM_BLANK;    // Roll angle too small
+                }
+                buff_offset = 2U;
+            } else {
+                if (ABS(attitude.values.roll) >= 1)
+                    buff[0] += (attitude.values.roll < 0 ? -1 : 1);
+            }
+            osdFormatCentiNumber(buff + buff_offset, DECIDEGREES_TO_CENTIDEGREES(ABS(attitude.values.roll)), 0, 1, 0, 3, false);
+            break;
+        }
 
     case OSD_ATTITUDE_PITCH:
-        if (ABS(attitude.values.pitch) < 1)
-            buff[0] = 'P';
-        else if (attitude.values.pitch > 0)
-            buff[0] = SYM_PITCH_DOWN;
-        else if (attitude.values.pitch < 0)
-            buff[0] = SYM_PITCH_UP;
-        osdFormatCentiNumber(buff + 1, DECIDEGREES_TO_CENTIDEGREES(ABS(attitude.values.pitch)), 0, 1, 0, 3, false);
-        break;
+        {
+            uint8_t buff_offset = 1U;
+            if (bfcompat) {
+                buff[0] = SYM_PITCH_UP;    // 0x15 is the DJI's font pitch symbol
+                if (ABS(attitude.values.pitch) < 1) {
+                    // Angle too small
+                    buff[1] = SYM_BLANK;
+                } else {
+                    if (attitude.values.pitch > 0) {
+                        // Nose down pitch
+                        buff[1] = SYM_DIRECTION + 4U;   // This will be remapped in getBfCharacter() to a down pointing arrow
+                    }
+                    else if (attitude.values.pitch < 0) {
+                        // Nose up pitch
+                        buff[1] = SYM_DIRECTION;    // This will be remapped in getBfCharacter() to an up pointing arrow
+                    } else {
+                        // Some error occurred, ignore
+                        buff[1] = SYM_BLANK;
+                    }
+                }
+                buff_offset = 2U;
+            } else {
+                if (ABS(attitude.values.pitch) < 1)
+                    buff[0] = 'P';
+                else if (attitude.values.pitch > 0)
+                    buff[0] = SYM_PITCH_DOWN;
+                else if (attitude.values.pitch < 0)
+                    buff[0] = SYM_PITCH_UP;
+            }
+            osdFormatCentiNumber(buff + buff_offset, DECIDEGREES_TO_CENTIDEGREES(ABS(attitude.values.pitch)), 0, 1, 0, 3, false);
+            break;
+        }
 
     case OSD_ARTIFICIAL_HORIZON:
         {
