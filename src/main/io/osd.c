@@ -3378,9 +3378,18 @@ static bool osdDrawSingleElement(uint8_t item)
             uint16_t angle;
             horizontalWindSpeed = getEstimatedHorizontalWindSpeed(&angle);
             int16_t windDirection = osdGetHeadingAngle( CENTIDEGREES_TO_DEGREES((int)angle) - DECIDEGREES_TO_DEGREES(attitude.values.yaw) + 22);
-            buff[0] = SYM_WIND_HORIZONTAL;
-            buff[1] = SYM_DIRECTION + (windDirection*2 / 90);
-            osdFormatWindSpeedStr(buff + 2, horizontalWindSpeed, valid);
+
+            uint8_t buff_offset = 2U;
+            if(bfcompat) {
+                buff[0] = 'H';
+                buff[1] = 'W';
+                buff_offset = 3;
+            } else {
+                buff[0] = SYM_WIND_HORIZONTAL;
+            }
+
+            buff[buff_offset - 1U] = SYM_DIRECTION + (windDirection*2 / 90);
+            osdFormatWindSpeedStr(buff + buff_offset, horizontalWindSpeed, valid);
             break;
         }
 #else
@@ -3390,18 +3399,31 @@ static bool osdDrawSingleElement(uint8_t item)
     case OSD_WIND_SPEED_VERTICAL:
 #ifdef USE_WIND_ESTIMATOR
         {
-            buff[0] = SYM_WIND_VERTICAL;
-            buff[1] = SYM_BLANK;
+            uint8_t buff_offset = 2U;
+            uint8_t arrow_up = SYM_AH_DIRECTION_UP;
+            uint8_t arrow_down = SYM_AH_DIRECTION_DOWN;
+
+            if(bfcompat) {
+                buff[0] = 'V';
+                buff[1] = 'W';
+                buff_offset = 3U;
+                arrow_up = SYM_DIRECTION;   // Translated by getBfCharacter() to an up pointing arrow
+                arrow_down = SYM_DIRECTION + 4U;    // Translated by getBfCharacter() to a down pointing arrow
+            } else {
+                buff[0] = SYM_WIND_VERTICAL;
+            }
+            buff[buff_offset - 1U] = SYM_BLANK;
+
             bool valid = isEstimatedWindSpeedValid();
             float verticalWindSpeed;
             verticalWindSpeed = -getEstimatedWindSpeed(Z);  //from NED to NEU
             if (verticalWindSpeed < 0) {
-                buff[1] = SYM_AH_DIRECTION_DOWN;
+                buff[buff_offset - 1U] = arrow_down;
                 verticalWindSpeed = -verticalWindSpeed;
             } else {
-                buff[1] = SYM_AH_DIRECTION_UP;
+                buff[buff_offset - 1U] = arrow_up;
             }
-            osdFormatWindSpeedStr(buff + 2, verticalWindSpeed, valid);
+            osdFormatWindSpeedStr(buff + buff_offset, verticalWindSpeed, valid);
             break;
         }
 #else
