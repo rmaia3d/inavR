@@ -746,6 +746,39 @@ static void osdDisplayTemperature(uint8_t elemPosX, uint8_t elemPosY, uint16_t s
     displayWriteWithAttr(osdDisplayPort, elemPosX + valueXOffset, elemPosY, buff, elemAttr);
 }
 
+/**
+* Displays a temperature postfixed with a symbol depending on the current unit system on BFCOMPAT OSD
+* @param label to display
+* @param valid true if measurement is valid
+* @param temperature in deciDegrees Celcius
+*/
+static void osdDisplayTemperatureBfCompat(uint8_t elemPosX, uint8_t elemPosY, char label, bool valid, int16_t temperature, int16_t alarm_min, int16_t alarm_max)
+{
+    char buff[8U];
+    textAttributes_t elemAttr = valid ? TEXT_ATTRIBUTES_NONE : _TEXT_ATTRIBUTES_BLINK_BIT;
+    uint8_t valueXOffset = 0;
+
+    buff[0] = label;    // Start with label letter (expected E for ESC, B for baro, C for CPU/IMU)
+    buff[1] = SYM_TEMP; // Temperature icon
+    buff[2] = '\0';
+
+    displayWriteWithAttr(osdDisplayPort, elemPosX, elemPosY, buff, elemAttr);
+    valueXOffset = 2;
+
+    if (valid) {
+        if ((temperature <= alarm_min) || (temperature >= alarm_max)) TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
+        if (osdConfig()->units == OSD_UNIT_IMPERIAL) temperature = temperature * 9 / 5.0f + 320;
+        tfp_sprintf(buff, "%3d", temperature / 10);
+    } else {
+        strcpy(buff, "---");
+    }
+
+    buff[3] = osdConfig()->units == OSD_UNIT_IMPERIAL ? SYM_TEMP_F : SYM_TEMP_C;
+    buff[4] = '\0';
+
+    displayWriteWithAttr(osdDisplayPort, elemPosX + valueXOffset, elemPosY, buff, elemAttr);
+}
+
 #ifdef USE_TEMPERATURE_SENSOR
 static void osdDisplayTemperatureSensor(uint8_t elemPosX, uint8_t elemPosY, uint8_t sensorIndex)
 {
@@ -754,6 +787,14 @@ static void osdDisplayTemperatureSensor(uint8_t elemPosX, uint8_t elemPosY, uint
     const tempSensorConfig_t *sensorConfig = tempSensorConfig(sensorIndex);
     uint16_t symbol = sensorConfig->osdSymbol ? SYM_TEMP_SENSOR_FIRST + sensorConfig->osdSymbol - 1 : 0;
     osdDisplayTemperature(elemPosX, elemPosY, symbol, sensorConfig->label, valid, temperature, sensorConfig->alarm_min, sensorConfig->alarm_max);
+}
+
+static void osdDisplayTemperatureSensorBfCompat(uint8_t elemPosX, uint8_t elemPosY, uint8_t sensorIndex)
+{
+    int16_t temperature;
+    const bool valid = getSensorTemperature(sensorIndex, &temperature);
+    const tempSensorConfig_t *sensorConfig = tempSensorConfig(sensorIndex);
+    osdDisplayTemperatureBfCompat(elemPosX, elemPosY, sensorIndex + 0x30U, valid, temperature, sensorConfig->alarm_min, sensorConfig->alarm_max);
 }
 #endif
 
@@ -3385,7 +3426,11 @@ static bool osdDrawSingleElement(uint8_t item)
         {
             int16_t temperature;
             const bool valid = getIMUTemperature(&temperature);
-            osdDisplayTemperature(elemPosX, elemPosY, SYM_IMU_TEMP, NULL, valid, temperature, osdConfig()->imu_temp_alarm_min, osdConfig()->imu_temp_alarm_max);
+            if(bfcompat) {
+                osdDisplayTemperatureBfCompat(elemPosX, elemPosY, 'C', valid, temperature, osdConfig()->imu_temp_alarm_min, osdConfig()->imu_temp_alarm_max);
+            } else {
+                osdDisplayTemperature(elemPosX, elemPosY, SYM_IMU_TEMP, NULL, valid, temperature, osdConfig()->imu_temp_alarm_min, osdConfig()->imu_temp_alarm_max);
+            }
             return true;
         }
 
@@ -3393,7 +3438,11 @@ static bool osdDrawSingleElement(uint8_t item)
         {
             int16_t temperature;
             const bool valid = getBaroTemperature(&temperature);
-            osdDisplayTemperature(elemPosX, elemPosY, SYM_BARO_TEMP, NULL, valid, temperature, osdConfig()->imu_temp_alarm_min, osdConfig()->imu_temp_alarm_max);
+            if(bfcompat) {
+                osdDisplayTemperatureBfCompat(elemPosX, elemPosY, 'B', valid, temperature, osdConfig()->imu_temp_alarm_min, osdConfig()->imu_temp_alarm_max);
+            } else {
+                osdDisplayTemperature(elemPosX, elemPosY, SYM_BARO_TEMP, NULL, valid, temperature, osdConfig()->imu_temp_alarm_min, osdConfig()->imu_temp_alarm_max);
+            }
             return true;
         }
 
@@ -3407,7 +3456,11 @@ static bool osdDrawSingleElement(uint8_t item)
     case OSD_TEMP_SENSOR_6_TEMPERATURE:
     case OSD_TEMP_SENSOR_7_TEMPERATURE:
         {
-            osdDisplayTemperatureSensor(elemPosX, elemPosY, item - OSD_TEMP_SENSOR_0_TEMPERATURE);
+            if(bfcompat) {
+                osdDisplayTemperatureSensorBfCompat(elemPosX, elemPosY, item - OSD_TEMP_SENSOR_0_TEMPERATURE);
+            } else {
+                osdDisplayTemperatureSensor(elemPosX, elemPosY, item - OSD_TEMP_SENSOR_0_TEMPERATURE);
+            }
             return true;
         }
 #endif /* ifdef USE_TEMPERATURE_SENSOR */
@@ -3625,7 +3678,11 @@ static bool osdDrawSingleElement(uint8_t item)
         {
             escSensorData_t * escSensor = escSensorGetData();
             bool escTemperatureValid = escSensor && escSensor->dataAge <= ESC_DATA_MAX_AGE;
-            osdDisplayTemperature(elemPosX, elemPosY, SYM_ESC_TEMP, NULL, escTemperatureValid, (escSensor->temperature)*10, osdConfig()->esc_temp_alarm_min, osdConfig()->esc_temp_alarm_max);
+            if (bfcompat) {
+                osdDisplayTemperatureBfCompat(elemPosX, elemPosY, 'E', escTemperatureValid, (escSensor->temperature)*10, osdConfig()->esc_temp_alarm_min, osdConfig()->esc_temp_alarm_max);    
+            } else {
+                osdDisplayTemperature(elemPosX, elemPosY, SYM_ESC_TEMP, NULL, escTemperatureValid, (escSensor->temperature)*10, osdConfig()->esc_temp_alarm_min, osdConfig()->esc_temp_alarm_max);
+            }
             return true;
         }
 #endif
