@@ -2459,14 +2459,24 @@ static bool osdDrawSingleElement(uint8_t item)
     case OSD_CRSF_RSSI_DBM:
         {
             int16_t rssi = rxLinkStatistics.uplinkRSSI;
-            buff[0] = (rxLinkStatistics.activeAntenna == 0) ? SYM_RSSI : SYM_2RSS; // Separate symbols for each antenna
-            if (rssi <= -100) {
-                tfp_sprintf(buff + 1, "%4d%c", rssi, SYM_DBM);
+            uint8_t buff_offset = 1U;
+            if (bfcompat) {
+                buff[0] = SYM_RSSI;
+                buff[1] = (rxLinkStatistics.activeAntenna == 0) ? '1' : '2';  // Indicate which antenna is active
+                buff_offset = 2U;
             } else {
-                tfp_sprintf(buff + 1, "%3d%c%c", rssi, SYM_DBM, ' ');
+                buff[0] = (rxLinkStatistics.activeAntenna == 0) ? SYM_RSSI : SYM_2RSS; // Separate symbols for each antenna
+            }
+            if (rssi <= -100) {
+                tfp_sprintf(buff + buff_offset, "%4d%c", rssi, SYM_DBM);
+            } else {
+                tfp_sprintf(buff + buff_offset, "%3d%c%c", rssi, SYM_DBM, ' ');
             }
             if (!failsafeIsReceivingRxData()){
                 TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
+                if(bfcompat) {
+                    buff[1] = SYM_BLANK;    // Blank active antenna if not receiving signal
+                }
             } else if (osdConfig()->rssi_dbm_alarm && rssi < osdConfig()->rssi_dbm_alarm) {
                 TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
             }
