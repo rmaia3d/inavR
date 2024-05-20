@@ -1737,6 +1737,14 @@ static bool osdDrawSingleElement(uint8_t item)
     textAttributes_t elemAttr = TEXT_ATTRIBUTES_NONE;
     char buff[32] = {0};
 
+    // Remove boilerplate. Instead of checking item by item, make a single global check
+    bool bfcompat = false;  // By default, assume it's false.
+#ifndef DISABLE_MSP_BF_COMPAT // IF BFCOMPAT is not supported, there's no need to check for it
+        if(isBfCompatibleVideoSystem(osdConfig())) {
+            bfcompat = true;    // Set the flag for each item
+        }
+#endif    
+
     switch (item) {
     case OSD_CUSTOM_ELEMENT_1:
     {
@@ -3041,12 +3049,19 @@ static bool osdDrawSingleElement(uint8_t item)
     case OSD_AIR_SPEED:
         {
         #ifdef USE_PITOT
-            buff[0] = SYM_AIR;
+            uint8_t buff_offset = 1U;
+            if (bfcompat) {
+                buff[0] = 'A';
+                buff[1] = 'S';
+                buff_offset = 2U;
+            } else {
+                buff[0] = SYM_AIR;
+            }
 
             if (pitotIsHealthy())
             {
                 const float airspeed_estimate = getAirspeedEstimate();
-                osdFormatVelocityStr(buff + 1, airspeed_estimate, false, false);
+                osdFormatVelocityStr(buff + buff_offset, airspeed_estimate, false, false);
                 if ((osdConfig()->airspeed_alarm_min != 0 && airspeed_estimate < osdConfig()->airspeed_alarm_min) ||
                     (osdConfig()->airspeed_alarm_max != 0 && airspeed_estimate > osdConfig()->airspeed_alarm_max)) {
                         TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
@@ -3054,7 +3069,7 @@ static bool osdDrawSingleElement(uint8_t item)
             }
             else
             {
-                strcpy(buff + 1, "  X!");
+                strcpy(buff + buff_offset, "  X!");
                 TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
             }
         #else
