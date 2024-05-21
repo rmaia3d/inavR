@@ -2058,9 +2058,18 @@ static bool osdDrawSingleElement(uint8_t item)
         break;
 
     case OSD_TRIP_DIST:
-        buff[0] = SYM_TOTAL;
-        osdFormatDistanceSymbol(buff + 1, getTotalTravelDistance(), 0);
+    {
+        uint8_t buff_offset = 1U;
+        if (bfcompat) {
+            buff[0] = 'T';
+            buff[1] = 'D';
+            buff_offset = 2U;
+        } else {
+            buff[0] = SYM_TOTAL;
+        }
+        osdFormatDistanceSymbol(buff + buff_offset, getTotalTravelDistance(), 0);
         break;
+    }
 
     case OSD_ODOMETER:
         {
