@@ -3131,15 +3131,19 @@ static bool osdDrawSingleElement(uint8_t item)
 
     case OSD_POWER:
         {
-            uint8_t digits = 3U;                
-            #ifndef DISABLE_MSP_BF_COMPAT // IF BFCOMPAT is not supported, there's no need to check for it and change the values
-                if (isBfCompatibleVideoSystem(osdConfig())) {
-                    digits = 4U;
-                }            
-            #endif
+            uint8_t digits = 3U;
+            if (bfcompat) {
+                digits = 4U;
+            }                
             bool kiloWatt = osdFormatCentiNumber(buff, getPower(), 1000, 2, 2, digits, false);
-            buff[digits] = kiloWatt ? SYM_KILOWATT : SYM_WATT;
-            buff[digits + 1] = '\0';
+            if(bfcompat) {
+                buff[digits] = kiloWatt ? 'K' : SYM_WATT;
+                buff[digits + 1U] = kiloWatt ? SYM_WATT : SYM_BLANK;
+                buff[digits + 2U] = '\0';
+            } else {
+                buff[digits] = kiloWatt ? SYM_KILOWATT : SYM_WATT;
+                buff[digits + 1] = '\0';
+            }
 
             uint8_t current_alarm = osdConfig()->current_alarm;
             if ((current_alarm > 0) && ((getAmperage() / 100.0f) > current_alarm)) {
@@ -4691,14 +4695,22 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
             displayWrite(osdDisplayPort, statNameX, top, "MAX POWER        :");
             uint8_t digits = 3U;
             bool kiloWatt = false;
+            bool bfcompat = false;
             #ifndef DISABLE_MSP_BF_COMPAT // IF BFCOMPAT is not supported, there's no need to check for it and change the values
                 if (isBfCompatibleVideoSystem(osdConfig())) {
                     digits = 4U;
+                    bfcompat = true;
                 }            
             #endif
             kiloWatt = osdFormatCentiNumber(buff, stats.max_power, 1000, 2, 2, digits, false);            
-            buff[digits] = kiloWatt ? SYM_KILOWATT : SYM_WATT;
-            buff[digits + 1U] = '\0';
+            if (bfcompat) {
+                buff[digits] = kiloWatt ? 'K' : SYM_WATT;
+                buff[digits + 1U] = kiloWatt ? SYM_WATT : SYM_BLANK;
+                buff[digits + 2U] = '\0';
+            } else {
+                buff[digits] = kiloWatt ? SYM_KILOWATT : SYM_WATT;
+                buff[digits + 1U] = '\0';
+            }
             displayWrite(osdDisplayPort, statValuesX, top++, buff);
 
             displayWrite(osdDisplayPort, statNameX, top, "USED CAPACITY    :");
