@@ -746,6 +746,39 @@ static void osdDisplayTemperature(uint8_t elemPosX, uint8_t elemPosY, uint16_t s
     displayWriteWithAttr(osdDisplayPort, elemPosX + valueXOffset, elemPosY, buff, elemAttr);
 }
 
+/**
+* Displays a temperature postfixed with a symbol depending on the current unit system on BFCOMPAT OSD
+* @param label to display
+* @param valid true if measurement is valid
+* @param temperature in deciDegrees Celcius
+*/
+static void osdDisplayTemperatureBfCompat(uint8_t elemPosX, uint8_t elemPosY, char label, bool valid, int16_t temperature, int16_t alarm_min, int16_t alarm_max)
+{
+    char buff[8U];
+    textAttributes_t elemAttr = valid ? TEXT_ATTRIBUTES_NONE : _TEXT_ATTRIBUTES_BLINK_BIT;
+    uint8_t valueXOffset = 0;
+
+    buff[0] = label;    // Start with label letter (expected E for ESC, B for baro, C for CPU/IMU)
+    buff[1] = SYM_TEMP; // Temperature icon
+    buff[2] = '\0';
+
+    displayWriteWithAttr(osdDisplayPort, elemPosX, elemPosY, buff, elemAttr);
+    valueXOffset = 2;
+
+    if (valid) {
+        if ((temperature <= alarm_min) || (temperature >= alarm_max)) TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
+        if (osdConfig()->units == OSD_UNIT_IMPERIAL) temperature = temperature * 9 / 5.0f + 320;
+        tfp_sprintf(buff, "%3d", temperature / 10);
+    } else {
+        strcpy(buff, "---");
+    }
+
+    buff[3] = osdConfig()->units == OSD_UNIT_IMPERIAL ? SYM_TEMP_F : SYM_TEMP_C;
+    buff[4] = '\0';
+
+    displayWriteWithAttr(osdDisplayPort, elemPosX + valueXOffset, elemPosY, buff, elemAttr);
+}
+
 #ifdef USE_TEMPERATURE_SENSOR
 static void osdDisplayTemperatureSensor(uint8_t elemPosX, uint8_t elemPosY, uint8_t sensorIndex)
 {
@@ -754,6 +787,14 @@ static void osdDisplayTemperatureSensor(uint8_t elemPosX, uint8_t elemPosY, uint
     const tempSensorConfig_t *sensorConfig = tempSensorConfig(sensorIndex);
     uint16_t symbol = sensorConfig->osdSymbol ? SYM_TEMP_SENSOR_FIRST + sensorConfig->osdSymbol - 1 : 0;
     osdDisplayTemperature(elemPosX, elemPosY, symbol, sensorConfig->label, valid, temperature, sensorConfig->alarm_min, sensorConfig->alarm_max);
+}
+
+static void osdDisplayTemperatureSensorBfCompat(uint8_t elemPosX, uint8_t elemPosY, uint8_t sensorIndex)
+{
+    int16_t temperature;
+    const bool valid = getSensorTemperature(sensorIndex, &temperature);
+    const tempSensorConfig_t *sensorConfig = tempSensorConfig(sensorIndex);
+    osdDisplayTemperatureBfCompat(elemPosX, elemPosY, sensorIndex + 0x30U, valid, temperature, sensorConfig->alarm_min, sensorConfig->alarm_max);
 }
 #endif
 
@@ -1737,6 +1778,14 @@ static bool osdDrawSingleElement(uint8_t item)
     textAttributes_t elemAttr = TEXT_ATTRIBUTES_NONE;
     char buff[32] = {0};
 
+    // Remove boilerplate. Instead of checking item by item, make a single global check
+    bool bfcompat = false;  // By default, assume it's false.
+#ifndef DISABLE_MSP_BF_COMPAT // IF BFCOMPAT is not supported, there's no need to check for it
+        if(isBfCompatibleVideoSystem(osdConfig())) {
+            bfcompat = true;    // Set the flag for each item
+        }
+#endif    
+
     switch (item) {
     case OSD_CUSTOM_ELEMENT_1:
     {
@@ -2009,9 +2058,18 @@ static bool osdDrawSingleElement(uint8_t item)
         break;
 
     case OSD_TRIP_DIST:
-        buff[0] = SYM_TOTAL;
-        osdFormatDistanceSymbol(buff + 1, getTotalTravelDistance(), 0);
+    {
+        uint8_t buff_offset = 1U;
+        if (bfcompat) {
+            buff[0] = 'T';
+            buff[1] = 'D';
+            buff_offset = 2U;
+        } else {
+            buff[0] = SYM_TOTAL;
+        }
+        osdFormatDistanceSymbol(buff + buff_offset, getTotalTravelDistance(), 0);
         break;
+    }
 
     case OSD_ODOMETER:
         {
@@ -2410,14 +2468,24 @@ static bool osdDrawSingleElement(uint8_t item)
     case OSD_CRSF_RSSI_DBM:
         {
             int16_t rssi = rxLinkStatistics.uplinkRSSI;
-            buff[0] = (rxLinkStatistics.activeAntenna == 0) ? SYM_RSSI : SYM_2RSS; // Separate symbols for each antenna
-            if (rssi <= -100) {
-                tfp_sprintf(buff + 1, "%4d%c", rssi, SYM_DBM);
+            uint8_t buff_offset = 1U;
+            if (bfcompat) {
+                buff[0] = SYM_RSSI;
+                buff[1] = (rxLinkStatistics.activeAntenna == 0) ? '1' : '2';  // Indicate which antenna is active
+                buff_offset = 2U;
             } else {
-                tfp_sprintf(buff + 1, "%3d%c%c", rssi, SYM_DBM, ' ');
+                buff[0] = (rxLinkStatistics.activeAntenna == 0) ? SYM_RSSI : SYM_2RSS; // Separate symbols for each antenna
+            }
+            if (rssi <= -100) {
+                tfp_sprintf(buff + buff_offset, "%4d%c", rssi, SYM_DBM);
+            } else {
+                tfp_sprintf(buff + buff_offset, "%3d%c%c", rssi, SYM_DBM, ' ');
             }
             if (!failsafeIsReceivingRxData()){
                 TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
+                if(bfcompat) {
+                    buff[1] = SYM_BLANK;    // Blank active antenna if not receiving signal
+                }
             } else if (osdConfig()->rssi_dbm_alarm && rssi < osdConfig()->rssi_dbm_alarm) {
                 TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
             }
@@ -2605,21 +2673,63 @@ static bool osdDrawSingleElement(uint8_t item)
         break;
 
     case OSD_ATTITUDE_ROLL:
-        buff[0] = SYM_ROLL_LEVEL;
-        if (ABS(attitude.values.roll) >= 1)
-            buff[0] += (attitude.values.roll < 0 ? -1 : 1);
-        osdFormatCentiNumber(buff + 1, DECIDEGREES_TO_CENTIDEGREES(ABS(attitude.values.roll)), 0, 1, 0, 3, false);
-        break;
+        {
+            uint8_t buff_offset = 1U;
+            buff[0] = SYM_ROLL_LEVEL;
+            if(bfcompat) {
+                if (ABS(attitude.values.roll) >= 1) {
+                    if (attitude.values.roll < 0) {
+                        // Left roll
+                        buff[1] = SYM_DIRECTION + 6U;   // This will be remapped in getBfCharacter() to a left pointing arrow
+                    } else {
+                        // Right roll
+                        buff[1] = SYM_DIRECTION + 2U;   // This will be remapped in getBfCharacter() to a right pointing arrow
+                    }
+                } else {
+                    buff[1] = SYM_BLANK;    // Roll angle too small
+                }
+                buff_offset = 2U;
+            } else {
+                if (ABS(attitude.values.roll) >= 1)
+                    buff[0] += (attitude.values.roll < 0 ? -1 : 1);
+            }
+            osdFormatCentiNumber(buff + buff_offset, DECIDEGREES_TO_CENTIDEGREES(ABS(attitude.values.roll)), 0, 1, 0, 3, false);
+            break;
+        }
 
     case OSD_ATTITUDE_PITCH:
-        if (ABS(attitude.values.pitch) < 1)
-            buff[0] = 'P';
-        else if (attitude.values.pitch > 0)
-            buff[0] = SYM_PITCH_DOWN;
-        else if (attitude.values.pitch < 0)
-            buff[0] = SYM_PITCH_UP;
-        osdFormatCentiNumber(buff + 1, DECIDEGREES_TO_CENTIDEGREES(ABS(attitude.values.pitch)), 0, 1, 0, 3, false);
-        break;
+        {
+            uint8_t buff_offset = 1U;
+            if (bfcompat) {
+                buff[0] = SYM_PITCH_UP;    // 0x15 is the DJI's font pitch symbol
+                if (ABS(attitude.values.pitch) < 1) {
+                    // Angle too small
+                    buff[1] = SYM_BLANK;
+                } else {
+                    if (attitude.values.pitch > 0) {
+                        // Nose down pitch
+                        buff[1] = SYM_DIRECTION + 4U;   // This will be remapped in getBfCharacter() to a down pointing arrow
+                    }
+                    else if (attitude.values.pitch < 0) {
+                        // Nose up pitch
+                        buff[1] = SYM_DIRECTION;    // This will be remapped in getBfCharacter() to an up pointing arrow
+                    } else {
+                        // Some error occurred, ignore
+                        buff[1] = SYM_BLANK;
+                    }
+                }
+                buff_offset = 2U;
+            } else {
+                if (ABS(attitude.values.pitch) < 1)
+                    buff[0] = 'P';
+                else if (attitude.values.pitch > 0)
+                    buff[0] = SYM_PITCH_DOWN;
+                else if (attitude.values.pitch < 0)
+                    buff[0] = SYM_PITCH_UP;
+            }
+            osdFormatCentiNumber(buff + buff_offset, DECIDEGREES_TO_CENTIDEGREES(ABS(attitude.values.pitch)), 0, 1, 0, 3, false);
+            break;
+        }
 
     case OSD_ARTIFICIAL_HORIZON:
         {
@@ -3021,15 +3131,19 @@ static bool osdDrawSingleElement(uint8_t item)
 
     case OSD_POWER:
         {
-            uint8_t digits = 3U;                
-            #ifndef DISABLE_MSP_BF_COMPAT // IF BFCOMPAT is not supported, there's no need to check for it and change the values
-                if (isBfCompatibleVideoSystem(osdConfig())) {
-                    digits = 4U;
-                }            
-            #endif
+            uint8_t digits = 3U;
+            if (bfcompat) {
+                digits = 4U;
+            }                
             bool kiloWatt = osdFormatCentiNumber(buff, getPower(), 1000, 2, 2, digits, false);
-            buff[digits] = kiloWatt ? SYM_KILOWATT : SYM_WATT;
-            buff[digits + 1] = '\0';
+            if(bfcompat) {
+                buff[digits] = kiloWatt ? 'K' : SYM_WATT;
+                buff[digits + 1U] = kiloWatt ? SYM_WATT : SYM_BLANK;
+                buff[digits + 2U] = '\0';
+            } else {
+                buff[digits] = kiloWatt ? SYM_KILOWATT : SYM_WATT;
+                buff[digits + 1] = '\0';
+            }
 
             uint8_t current_alarm = osdConfig()->current_alarm;
             if ((current_alarm > 0) && ((getAmperage() / 100.0f) > current_alarm)) {
@@ -3041,12 +3155,19 @@ static bool osdDrawSingleElement(uint8_t item)
     case OSD_AIR_SPEED:
         {
         #ifdef USE_PITOT
-            buff[0] = SYM_AIR;
+            uint8_t buff_offset = 1U;
+            if (bfcompat) {
+                buff[0] = 'A';
+                buff[1] = 'S';
+                buff_offset = 2U;
+            } else {
+                buff[0] = SYM_AIR;
+            }
 
             if (pitotIsHealthy())
             {
                 const float airspeed_estimate = getAirspeedEstimate();
-                osdFormatVelocityStr(buff + 1, airspeed_estimate, false, false);
+                osdFormatVelocityStr(buff + buff_offset, airspeed_estimate, false, false);
                 if ((osdConfig()->airspeed_alarm_min != 0 && airspeed_estimate < osdConfig()->airspeed_alarm_min) ||
                     (osdConfig()->airspeed_alarm_max != 0 && airspeed_estimate > osdConfig()->airspeed_alarm_max)) {
                         TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
@@ -3054,7 +3175,7 @@ static bool osdDrawSingleElement(uint8_t item)
             }
             else
             {
-                strcpy(buff + 1, "  X!");
+                strcpy(buff + buff_offset, "  X!");
                 TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
             }
         #else
@@ -3328,7 +3449,11 @@ static bool osdDrawSingleElement(uint8_t item)
         {
             int16_t temperature;
             const bool valid = getIMUTemperature(&temperature);
-            osdDisplayTemperature(elemPosX, elemPosY, SYM_IMU_TEMP, NULL, valid, temperature, osdConfig()->imu_temp_alarm_min, osdConfig()->imu_temp_alarm_max);
+            if(bfcompat) {
+                osdDisplayTemperatureBfCompat(elemPosX, elemPosY, 'C', valid, temperature, osdConfig()->imu_temp_alarm_min, osdConfig()->imu_temp_alarm_max);
+            } else {
+                osdDisplayTemperature(elemPosX, elemPosY, SYM_IMU_TEMP, NULL, valid, temperature, osdConfig()->imu_temp_alarm_min, osdConfig()->imu_temp_alarm_max);
+            }
             return true;
         }
 
@@ -3336,7 +3461,11 @@ static bool osdDrawSingleElement(uint8_t item)
         {
             int16_t temperature;
             const bool valid = getBaroTemperature(&temperature);
-            osdDisplayTemperature(elemPosX, elemPosY, SYM_BARO_TEMP, NULL, valid, temperature, osdConfig()->imu_temp_alarm_min, osdConfig()->imu_temp_alarm_max);
+            if(bfcompat) {
+                osdDisplayTemperatureBfCompat(elemPosX, elemPosY, 'B', valid, temperature, osdConfig()->imu_temp_alarm_min, osdConfig()->imu_temp_alarm_max);
+            } else {
+                osdDisplayTemperature(elemPosX, elemPosY, SYM_BARO_TEMP, NULL, valid, temperature, osdConfig()->imu_temp_alarm_min, osdConfig()->imu_temp_alarm_max);
+            }
             return true;
         }
 
@@ -3350,7 +3479,11 @@ static bool osdDrawSingleElement(uint8_t item)
     case OSD_TEMP_SENSOR_6_TEMPERATURE:
     case OSD_TEMP_SENSOR_7_TEMPERATURE:
         {
-            osdDisplayTemperatureSensor(elemPosX, elemPosY, item - OSD_TEMP_SENSOR_0_TEMPERATURE);
+            if(bfcompat) {
+                osdDisplayTemperatureSensorBfCompat(elemPosX, elemPosY, item - OSD_TEMP_SENSOR_0_TEMPERATURE);
+            } else {
+                osdDisplayTemperatureSensor(elemPosX, elemPosY, item - OSD_TEMP_SENSOR_0_TEMPERATURE);
+            }
             return true;
         }
 #endif /* ifdef USE_TEMPERATURE_SENSOR */
@@ -3363,9 +3496,18 @@ static bool osdDrawSingleElement(uint8_t item)
             uint16_t angle;
             horizontalWindSpeed = getEstimatedHorizontalWindSpeed(&angle);
             int16_t windDirection = osdGetHeadingAngle( CENTIDEGREES_TO_DEGREES((int)angle) - DECIDEGREES_TO_DEGREES(attitude.values.yaw) + 22);
-            buff[0] = SYM_WIND_HORIZONTAL;
-            buff[1] = SYM_DIRECTION + (windDirection*2 / 90);
-            osdFormatWindSpeedStr(buff + 2, horizontalWindSpeed, valid);
+
+            uint8_t buff_offset = 2U;
+            if(bfcompat) {
+                buff[0] = 'H';
+                buff[1] = 'W';
+                buff_offset = 3;
+            } else {
+                buff[0] = SYM_WIND_HORIZONTAL;
+            }
+
+            buff[buff_offset - 1U] = SYM_DIRECTION + (windDirection*2 / 90);
+            osdFormatWindSpeedStr(buff + buff_offset, horizontalWindSpeed, valid);
             break;
         }
 #else
@@ -3375,18 +3517,31 @@ static bool osdDrawSingleElement(uint8_t item)
     case OSD_WIND_SPEED_VERTICAL:
 #ifdef USE_WIND_ESTIMATOR
         {
-            buff[0] = SYM_WIND_VERTICAL;
-            buff[1] = SYM_BLANK;
+            uint8_t buff_offset = 2U;
+            uint8_t arrow_up = SYM_AH_DIRECTION_UP;
+            uint8_t arrow_down = SYM_AH_DIRECTION_DOWN;
+
+            if(bfcompat) {
+                buff[0] = 'V';
+                buff[1] = 'W';
+                buff_offset = 3U;
+                arrow_up = SYM_DIRECTION;   // Translated by getBfCharacter() to an up pointing arrow
+                arrow_down = SYM_DIRECTION + 4U;    // Translated by getBfCharacter() to a down pointing arrow
+            } else {
+                buff[0] = SYM_WIND_VERTICAL;
+            }
+            buff[buff_offset - 1U] = SYM_BLANK;
+
             bool valid = isEstimatedWindSpeedValid();
             float verticalWindSpeed;
             verticalWindSpeed = -getEstimatedWindSpeed(Z);  //from NED to NEU
             if (verticalWindSpeed < 0) {
-                buff[1] = SYM_AH_DIRECTION_DOWN;
+                buff[buff_offset - 1U] = arrow_down;
                 verticalWindSpeed = -verticalWindSpeed;
             } else {
-                buff[1] = SYM_AH_DIRECTION_UP;
+                buff[buff_offset - 1U] = arrow_up;
             }
-            osdFormatWindSpeedStr(buff + 2, verticalWindSpeed, valid);
+            osdFormatWindSpeedStr(buff + buff_offset, verticalWindSpeed, valid);
             break;
         }
 #else
@@ -3546,7 +3701,11 @@ static bool osdDrawSingleElement(uint8_t item)
         {
             escSensorData_t * escSensor = escSensorGetData();
             bool escTemperatureValid = escSensor && escSensor->dataAge <= ESC_DATA_MAX_AGE;
-            osdDisplayTemperature(elemPosX, elemPosY, SYM_ESC_TEMP, NULL, escTemperatureValid, (escSensor->temperature)*10, osdConfig()->esc_temp_alarm_min, osdConfig()->esc_temp_alarm_max);
+            if (bfcompat) {
+                osdDisplayTemperatureBfCompat(elemPosX, elemPosY, 'E', escTemperatureValid, (escSensor->temperature)*10, osdConfig()->esc_temp_alarm_min, osdConfig()->esc_temp_alarm_max);    
+            } else {
+                osdDisplayTemperature(elemPosX, elemPosY, SYM_ESC_TEMP, NULL, escTemperatureValid, (escSensor->temperature)*10, osdConfig()->esc_temp_alarm_min, osdConfig()->esc_temp_alarm_max);
+            }
             return true;
         }
 #endif
@@ -4536,14 +4695,22 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
             displayWrite(osdDisplayPort, statNameX, top, "MAX POWER        :");
             uint8_t digits = 3U;
             bool kiloWatt = false;
+            bool bfcompat = false;
             #ifndef DISABLE_MSP_BF_COMPAT // IF BFCOMPAT is not supported, there's no need to check for it and change the values
                 if (isBfCompatibleVideoSystem(osdConfig())) {
                     digits = 4U;
+                    bfcompat = true;
                 }            
             #endif
             kiloWatt = osdFormatCentiNumber(buff, stats.max_power, 1000, 2, 2, digits, false);            
-            buff[digits] = kiloWatt ? SYM_KILOWATT : SYM_WATT;
-            buff[digits + 1U] = '\0';
+            if (bfcompat) {
+                buff[digits] = kiloWatt ? 'K' : SYM_WATT;
+                buff[digits + 1U] = kiloWatt ? SYM_WATT : SYM_BLANK;
+                buff[digits + 2U] = '\0';
+            } else {
+                buff[digits] = kiloWatt ? SYM_KILOWATT : SYM_WATT;
+                buff[digits + 1U] = '\0';
+            }
             displayWrite(osdDisplayPort, statValuesX, top++, buff);
 
             displayWrite(osdDisplayPort, statNameX, top, "USED CAPACITY    :");
