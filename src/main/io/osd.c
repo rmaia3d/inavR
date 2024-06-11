@@ -253,38 +253,6 @@ static void osdLeftAlignString(char *buff)
     for (sp = ch; sp < len; sp++) buff[sp] = ' ';
 }
 
-/*
- * This is a simplified distance conversion code that does not use any scaling
- * but is fully compatible with the DJI G2 MSP Displayport OSD implementation.
- * (Based on osdSimpleAltitudeSymbol() implementation)
- */
-/* void osdSimpleDistanceSymbol(char *buff, int32_t dist) {
-
-    int32_t convertedDistance;
-    char suffix;
-
-    switch ((osd_unit_e)osdConfig()->units) {
-        case OSD_UNIT_UK:
-            FALLTHROUGH;
-        case OSD_UNIT_GA:
-            FALLTHROUGH;
-        case OSD_UNIT_IMPERIAL:
-            convertedDistance = CENTIMETERS_TO_FEET(dist);
-            suffix = SYM_ALT_FT;
-            break;
-        case OSD_UNIT_METRIC_MPH:
-            FALLTHROUGH;
-        case OSD_UNIT_METRIC:
-            convertedDistance = CENTIMETERS_TO_METERS(dist);
-            suffix = SYM_ALT_M; // Intentionally use the altitude symbol, as the distance symbol is not defined in BFCOMPAT mode
-            break;
-    }
-
-    tfp_sprintf(buff, "%5d", (int) convertedDistance); // 5 digits, allowing up to 99999 meters/feet, which should be plenty for 99.9% of use cases
-    buff[5] = suffix;
-    buff[6] = '\0';
-} */
-
 /**
  * Converts distance into a string based on the current unit system
  * prefixed by a a symbol to indicate the unit used.
@@ -500,37 +468,6 @@ static void osdFormatWindSpeedStr(char *buff, int32_t ws, bool isValid)
     buff[4] = '\0';
 }
 #endif
-
-/*
- * This is a simplified altitude conversion code that does not use any scaling
- * but is fully compatible with the DJI G2 MSP Displayport OSD implementation.
- */
-/* void osdSimpleAltitudeSymbol(char *buff, int32_t alt) {
-
-    int32_t convertedAltutude = 0;
-    char suffix = '\0';
-
-    switch ((osd_unit_e)osdConfig()->units) {
-        case OSD_UNIT_UK:
-            FALLTHROUGH;
-        case OSD_UNIT_GA:
-            FALLTHROUGH;
-        case OSD_UNIT_IMPERIAL:
-            convertedAltutude = CENTIMETERS_TO_FEET(alt);
-            suffix = SYM_ALT_FT;
-            break;
-        case OSD_UNIT_METRIC_MPH:
-            FALLTHROUGH;
-        case OSD_UNIT_METRIC:
-            convertedAltutude = CENTIMETERS_TO_METERS(alt);
-            suffix = SYM_ALT_M;
-            break;
-    }
-
-    tfp_sprintf(buff, "%4d", (int) convertedAltutude);
-    buff[4] = suffix;
-    buff[5] = '\0';
-} */
 
 /**
 * Converts altitude into a string based on the current unit system
