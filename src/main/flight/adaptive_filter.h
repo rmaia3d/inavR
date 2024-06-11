@@ -22,29 +22,14 @@
  * along with this program. If not, see http://www.gnu.org/licenses/.
  */
 
-#include <stdint.h>
+#include "common/axis.h"
+#include "common/time.h"
 
-#include "platform.h"
+#define ADAPTIVE_FILTER_BUFFER_SIZE 64
+#define ADAPTIVE_FILTER_RATE_HZ 100
 
-#include "drivers/bus.h"
-#include "drivers/io.h"
-#include "drivers/pwm_mapping.h"
-#include "drivers/timer.h"
-
-timerHardware_t timerHardware[] = {
-
-    DEF_TIM(TMR3, CH3, PB0,  TIM_USE_OUTPUT_AUTO, 0,8), // S1
-    DEF_TIM(TMR3, CH4, PB1,  TIM_USE_OUTPUT_AUTO, 0,9), // S2
-    DEF_TIM(TMR8, CH3, PC8,  TIM_USE_OUTPUT_AUTO, 0,2), // S3
-    DEF_TIM(TMR8, CH4, PC9,  TIM_USE_OUTPUT_AUTO, 0,0), // S4
-
-    DEF_TIM(TMR4, CH1, PB6,  TIM_USE_OUTPUT_AUTO, 0,11),    // S5
-    DEF_TIM(TMR4, CH2, PB7,  TIM_USE_OUTPUT_AUTO, 0,10),    // S6
-    DEF_TIM(TMR2, CH3, PB10, TIM_USE_OUTPUT_AUTO, 0,5),     //S7
-    DEF_TIM(TMR2, CH4, PB11, TIM_USE_OUTPUT_AUTO, 0,6),     //S8
-    
-    DEF_TIM(TMR1, CH1, PA8,   TIM_USE_LED, 0, 0),  // LED STRIP
-};
-
-const int timerHardwareCount = sizeof(timerHardware) / sizeof(timerHardware[0]);
-  
+void adaptiveFilterPush(const flight_dynamics_index_t index, const float value);
+void adaptiveFilterPushRate(const flight_dynamics_index_t index, const float rate, const uint8_t configRate);
+void adaptiveFilterResetIntegrator(void);
+void adaptiveFilterSetDefaultFrequency(int lpf, int min, int max);
+void adaptiveFilterTask(timeUs_t currentTimeUs);

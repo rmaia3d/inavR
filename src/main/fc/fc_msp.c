@@ -856,7 +856,7 @@ static bool mspFcProcessOutCommand(uint16_t cmdMSP, sbuf_t *dst, mspPostProcessF
         sbufWriteU32(dst, currentBatteryProfile->capacity.value);
         sbufWriteU32(dst, currentBatteryProfile->capacity.warning);
         sbufWriteU32(dst, currentBatteryProfile->capacity.critical);
-        sbufWriteU8(dst, currentBatteryProfile->capacity.unit);
+        sbufWriteU8(dst, batteryMetersConfig()->capacity_unit);
         break;
 
     case MSP2_INAV_MISC2:
@@ -895,7 +895,7 @@ static bool mspFcProcessOutCommand(uint16_t cmdMSP, sbuf_t *dst, mspPostProcessF
         sbufWriteU32(dst, currentBatteryProfile->capacity.value);
         sbufWriteU32(dst, currentBatteryProfile->capacity.warning);
         sbufWriteU32(dst, currentBatteryProfile->capacity.critical);
-        sbufWriteU8(dst, currentBatteryProfile->capacity.unit);
+        sbufWriteU8(dst, batteryMetersConfig()->capacity_unit);
         break;
 
 #ifdef USE_GPS
@@ -1575,6 +1575,7 @@ static bool mspFcProcessOutCommand(uint16_t cmdMSP, sbuf_t *dst, mspPostProcessF
             }
         break;
 
+    // Obsolete, replaced by MSP2_INAV_OUTPUT_MAPPING_EXT2
     case MSP2_INAV_OUTPUT_MAPPING_EXT:
         for (uint8_t i = 0; i < timerHardwareCount; ++i)
             if (!(timerHardware[i].usageFlags & (TIM_USE_PPM | TIM_USE_PWM))) {
@@ -1583,9 +1584,35 @@ static bool mspFcProcessOutCommand(uint16_t cmdMSP, sbuf_t *dst, mspPostProcessF
                 #else
                 sbufWriteU8(dst, timer2id(timerHardware[i].tim));
                 #endif
+                // usageFlags is u32, cuts out the higher 24bits
                 sbufWriteU8(dst, timerHardware[i].usageFlags);
             }
         break;
+    case MSP2_INAV_OUTPUT_MAPPING_EXT2:
+        {
+            #if !defined(SITL_BUILD) && defined(WS2811_PIN)
+            ioTag_t led_tag = IO_TAG(WS2811_PIN);
+            #endif
+            for (uint8_t i = 0; i < timerHardwareCount; ++i)
+
+                if (!(timerHardware[i].usageFlags & (TIM_USE_PPM | TIM_USE_PWM))) {
+                    #if defined(SITL_BUILD)
+                    sbufWriteU8(dst, i);
+                    #else
+                    sbufWriteU8(dst, timer2id(timerHardware[i].tim));
+                    #endif
+                    sbufWriteU32(dst, timerHardware[i].usageFlags);
+                    #if defined(SITL_BUILD) || !defined(WS2811_PIN)
+                    sbufWriteU8(dst, 0);
+                    #else
+                    // Extra label to help identify repurposed PINs.
+                    // Eventually, we can try to add more labels for PPM pins, etc.
+                    sbufWriteU8(dst, timerHardware[i].tag == led_tag ? PIN_LABEL_LED : PIN_LABEL_NONE);
+                    #endif
+            }
+        }
+        break;
+    
 
     case MSP2_INAV_MC_BRAKING:
 #ifdef USE_MR_BRAKING_MODE
@@ -2054,13 +2081,13 @@ static mspResult_e mspFcProcessInCommand(uint16_t cmdMSP, sbuf_t *src)
             currentBatteryProfileMutable->capacity.value = sbufReadU32(src);
             currentBatteryProfileMutable->capacity.warning = sbufReadU32(src);
             currentBatteryProfileMutable->capacity.critical = sbufReadU32(src);
-            currentBatteryProfileMutable->capacity.unit = sbufReadU8(src);
+            batteryMetersConfigMutable()->capacity_unit = sbufReadU8(src);
             if ((batteryMetersConfig()->voltageSource != BAT_VOLTAGE_RAW) && (batteryMetersConfig()->voltageSource != BAT_VOLTAGE_SAG_COMP)) {
                 batteryMetersConfigMutable()->voltageSource = BAT_VOLTAGE_RAW;
                 return MSP_RESULT_ERROR;
             }
-            if ((currentBatteryProfile->capacity.unit != BAT_CAPACITY_UNIT_MAH) && (currentBatteryProfile->capacity.unit != BAT_CAPACITY_UNIT_MWH)) {
-                currentBatteryProfileMutable->capacity.unit = BAT_CAPACITY_UNIT_MAH;
+            if ((batteryMetersConfig()->capacity_unit != BAT_CAPACITY_UNIT_MAH) && (batteryMetersConfig()->capacity_unit != BAT_CAPACITY_UNIT_MWH)) {
+                batteryMetersConfigMutable()->capacity_unit = BAT_CAPACITY_UNIT_MAH;
                 return MSP_RESULT_ERROR;
             }
         } else
@@ -2093,13 +2120,13 @@ static mspResult_e mspFcProcessInCommand(uint16_t cmdMSP, sbuf_t *src)
             currentBatteryProfileMutable->capacity.value = sbufReadU32(src);
             currentBatteryProfileMutable->capacity.warning = sbufReadU32(src);
             currentBatteryProfileMutable->capacity.critical = sbufReadU32(src);
-            currentBatteryProfileMutable->capacity.unit = sbufReadU8(src);
+            batteryMetersConfigMutable()->capacity_unit = sbufReadU8(src);
             if ((batteryMetersConfig()->voltageSource != BAT_VOLTAGE_RAW) && (batteryMetersConfig()->voltageSource != BAT_VOLTAGE_SAG_COMP)) {
                 batteryMetersConfigMutable()->voltageSource = BAT_VOLTAGE_RAW;
                 return MSP_RESULT_ERROR;
             }
-            if ((currentBatteryProfile->capacity.unit != BAT_CAPACITY_UNIT_MAH) && (currentBatteryProfile->capacity.unit != BAT_CAPACITY_UNIT_MWH)) {
-                currentBatteryProfileMutable->capacity.unit = BAT_CAPACITY_UNIT_MAH;
+            if ((batteryMetersConfig()->capacity_unit != BAT_CAPACITY_UNIT_MAH) && (batteryMetersConfig()->capacity_unit != BAT_CAPACITY_UNIT_MWH)) {
+                batteryMetersConfigMutable()->capacity_unit = BAT_CAPACITY_UNIT_MAH;
                 return MSP_RESULT_ERROR;
             }
         } else

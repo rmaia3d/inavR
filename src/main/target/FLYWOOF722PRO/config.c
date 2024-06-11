@@ -15,23 +15,15 @@
  * along with INAV.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdbool.h>
-#include <platform.h>
-#include "drivers/io.h"
-#include "drivers/bus.h"
-#include "drivers/timer.h"
-#include "drivers/sensor.h"
+#include <stdint.h>
+#include "platform.h"
 #include "drivers/pwm_mapping.h"
+#include "fc/fc_msp_box.h"
+#include "io/piniobox.h"
 
-timerHardware_t timerHardware[] = {
-
-    DEF_TIM(TIM3, CH1, PB4,  TIM_USE_MOTOR, 0, 0), // M1 - D(1, 4, 5)
-    DEF_TIM(TIM3, CH2, PB5,  TIM_USE_MOTOR, 0, 0), // M2 - D(1, 5, 5)
-    DEF_TIM(TIM3, CH4, PB1,  TIM_USE_MOTOR, 0, 0), // M3 - D(1, 2, 5)
-    DEF_TIM(TIM3, CH3, PB0,  TIM_USE_MOTOR, 0, 0), // M4 - D(1, 7, 5)
-						   //
-    DEF_TIM(TIM1,  CH1, PA8, TIM_USE_LED, 0, 0),      // LED STRIP - D(2, 6, 0)
-
-};
-
-const int timerHardwareCount = sizeof(timerHardware) / sizeof(timerHardware[0]);
+void targetConfiguration(void)
+{
+    pinioBoxConfigMutable()->permanentId[0] = BOX_PERMANENT_ID_USER1;
+    timerOverridesMutable(timer2id(TIM3))->outputMode = OUTPUT_MODE_MOTORS;
+    timerOverridesMutable(timer2id(TIM2))->outputMode = OUTPUT_MODE_MOTORS;
+}
