@@ -4365,7 +4365,7 @@ static void osdCompleteAsyncInitialization(void)
     }
 
     char string_buffer[30];
-    tfp_sprintf(string_buffer, "INAV VERSION: %s", FC_VERSION_STRING);
+    tfp_sprintf(string_buffer, "INAVR VERSION: %s", FC_VERSION_STRING);
     uint8_t xPos = (osdDisplayPort->cols - 19) / 2; // Automatically centre, regardless of resolution. In the case of odd number screens, bias to the left.
     displayWrite(osdDisplayPort, xPos, y++, string_buffer);
 #ifdef USE_CMS
