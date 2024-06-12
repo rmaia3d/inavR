@@ -2081,14 +2081,22 @@ static bool osdDrawSingleElement(uint8_t item)
 
     case OSD_GROUND_COURSE:
         {
-            buff[0] = SYM_GROUND_COURSE;
-            if (osdIsHeadingValid()) {
-                tfp_sprintf(&buff[1], "%3d", (int16_t)CENTIDEGREES_TO_DEGREES(posControl.actualState.cog));
+            uint8_t buff_offset = 1U;
+            if (bfcompat) {
+                buff[0] = 'C';
+                buff[1] = 'R';
+                buff[2] = 'S';  // Use CRS as Course abbreviation
+                buff_offset = 3U;
             } else {
-                buff[1] = buff[2] = buff[3] = '-';
+                buff[0] = SYM_GROUND_COURSE;
             }
-            buff[4] = SYM_DEGREES;
-            buff[5] = '\0';
+            if (osdIsHeadingValid()) {
+                tfp_sprintf(&buff[buff_offset], "%3d", (int16_t)CENTIDEGREES_TO_DEGREES(posControl.actualState.cog));
+            } else {
+                buff[buff_offset] = buff[buff_offset + 1U] = buff[buff_offset + 2U] = '-';
+            }
+            buff[buff_offset + 3U] = SYM_DEGREES;
+            buff[buff_offset + 4U] = '\0';
             break;
         }
 
