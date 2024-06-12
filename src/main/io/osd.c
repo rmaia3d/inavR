@@ -4579,6 +4579,14 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
     const uint8_t statValuesX = osdDisplayIsHD() ? 30 : 20;
     char buff[10];
 
+    // Single BFCOMPAT check for the function
+    bool bfcompat = false;
+#ifndef DISABLE_MSP_BF_COMPAT // IF BFCOMPAT is not supported, there's no need to check for it and change the values
+    if (isBfCompatibleVideoSystem(osdConfig())) {
+        bfcompat = true;
+    }            
+#endif
+
     if (page > 1)
         page = 0;
 
@@ -4640,7 +4648,11 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
                     multiValueLengthOffset = strlen(buff);
                     displayWrite(osdDisplayPort, statValuesX, top, buff);
                     itoa(stats.min_rssi_dbm, buff, 10);
-                    tfp_sprintf(buff, "%s%c", buff, SYM_DBM);
+                    if(bfcompat) {
+                        tfp_sprintf(buff, "%sDBM", buff);
+                    } else {
+                        tfp_sprintf(buff, "%s%c", buff, SYM_DBM);
+                    }
                     osdLeftAlignString(buff);
                     displayWrite(osdDisplayPort, statValuesX + multiValueLengthOffset, top++, buff);
                 } else {
@@ -4651,7 +4663,11 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
 
                     displayWrite(osdDisplayPort, statNameX, top, "MIN RSSI DBM     :");
                     itoa(stats.min_rssi_dbm, buff, 10);
-                    tfp_sprintf(buff, "%s%c", buff, SYM_DBM);
+                    if(bfcompat) {
+                        tfp_sprintf(buff, "%sDBM", buff);
+                    } else {
+                        tfp_sprintf(buff, "%s%c", buff, SYM_DBM);
+                    }
                     displayWrite(osdDisplayPort, statValuesX, top++, buff);
                 }
 
@@ -4700,13 +4716,9 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
             displayWrite(osdDisplayPort, statNameX, top, "MAX POWER        :");
             uint8_t digits = 3U;
             bool kiloWatt = false;
-            bool bfcompat = false;
-            #ifndef DISABLE_MSP_BF_COMPAT // IF BFCOMPAT is not supported, there's no need to check for it and change the values
-                if (isBfCompatibleVideoSystem(osdConfig())) {
-                    digits = 4U;
-                    bfcompat = true;
-                }            
-            #endif
+            if (bfcompat) {
+                digits = 4U;
+            }            
             kiloWatt = osdFormatCentiNumber(buff, stats.max_power, 1000, 2, 2, digits, false);            
             if (bfcompat) {
                 buff[digits] = kiloWatt ? 'K' : SYM_WATT;
@@ -4723,7 +4735,11 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
                 tfp_sprintf(buff, "%d%c", (int)getMAhDrawn(), SYM_MAH);
             } else {
                 osdFormatCentiNumber(buff, getMWhDrawn() / 10, 0, 2, 0, 3, false);
-                tfp_sprintf(buff, "%s%c", buff, SYM_WH);
+                if (bfcompat) {
+                    tfp_sprintf(buff, "%sWH", buff);
+                } else {
+                    tfp_sprintf(buff, "%s%c", buff, SYM_WH);
+                }
             }
             displayWrite(osdDisplayPort, statValuesX, top++, buff);
 
@@ -4746,7 +4762,11 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
                             if (!moreThanAh) {
                                 tfp_sprintf(buff, "%s%c%c", buff, SYM_MAH_MI_0, SYM_MAH_MI_1);
                             } else {
-                                tfp_sprintf(buff, "%s%c", buff, SYM_AH_MI);
+                                if (bfcompat) {
+                                    tfp_sprintf(buff, "%sAHM", buff);
+                                } else {
+                                    tfp_sprintf(buff, "%s%c", buff, SYM_AH_MI);
+                                }
                             }
                             if (!efficiencyValid) {
                                 buff[0] = buff[1] = buff[2] = '-';
@@ -4756,7 +4776,11 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
                             }
                         } else {
                             osdFormatCentiNumber(buff, (int32_t)(getMWhDrawn() * 10.0f * METERS_PER_MILE / totalDistance), 0, 2, 0, digits, false);
-                            tfp_sprintf(buff, "%s%c", buff, SYM_WH_MI);
+                            if (bfcompat) {
+                                tfp_sprintf(buff, "%sWHM", buff);
+                            } else {
+                                tfp_sprintf(buff, "%s%c", buff, SYM_WH_MI);
+                            }
                             if (!efficiencyValid) {
                                 buff[0] = buff[1] = buff[2] = '-';
                             }
@@ -4792,7 +4816,11 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
                             if (!moreThanAh) {
                                 tfp_sprintf(buff, "%s%c%c", buff, SYM_MAH_KM_0, SYM_MAH_KM_1);
                             } else {
-                                tfp_sprintf(buff, "%s%c", buff, SYM_AH_KM);
+                                if (bfcompat) {
+                                    tfp_sprintf(buff, "%sAHK", buff);
+                                } else {
+                                    tfp_sprintf(buff, "%s%c", buff, SYM_AH_KM);
+                                }
                             }
                             if (!efficiencyValid) {
                                 buff[0] = buff[1] = buff[2] = '-';
@@ -4802,7 +4830,11 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
                             }
                         } else {
                             osdFormatCentiNumber(buff, (int32_t)(getMWhDrawn() * 10000.0f / totalDistance), 0, 2, 0, digits, false);
-                            tfp_sprintf(buff, "%s%c", buff, SYM_WH_KM);
+                            if (bfcompat) {
+                                tfp_sprintf(buff, "%sWHK", buff);
+                            } else {
+                                tfp_sprintf(buff, "%s%c", buff, SYM_WH_KM);
+                            }
                             if (!efficiencyValid) {
                                 buff[0] = buff[1] = buff[2] = '-';
                             }
