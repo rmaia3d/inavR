@@ -225,7 +225,7 @@ uint8_t getBfCharacter(uint8_t ch, uint8_t page)
         return BF_SYM_FT;
 
     case SYM_DIST_MI:
-        return BF_SYM_MILES;
+        return 'M';
 
     case SYM_DIST_NM:
         return BF_SYM_MILES;
@@ -235,10 +235,10 @@ uint8_t getBfCharacter(uint8_t ch, uint8_t page)
 
     case SYM_KM:
         return BF_SYM_KM;
-/*
-    case SYM_MI:
-        return BF_SYM_MILES;
 
+    case SYM_MI:
+        return 'M';     // Use M as abbreviation for miles
+/*
     case SYM_NM:
         return BF_SYM_NM;
 */
