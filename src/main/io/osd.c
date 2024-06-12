@@ -3237,7 +3237,11 @@ static bool osdDrawSingleElement(uint8_t item)
                     if (!moreThanAh) {
                         tfp_sprintf(buff, "%s%c%c", buff, SYM_MAH_MI_0, SYM_MAH_MI_1);
                     } else {
-                        tfp_sprintf(buff, "%s%c", buff, SYM_AH_MI);
+                        if(bfcompat) {
+                            tfp_sprintf(buff, "%sAHM", buff);   // Use AHM as Ah/miles in BFCOMPAT mode
+                        } else {
+                            tfp_sprintf(buff, "%s%c", buff, SYM_AH_MI);
+                        }
                     }
                     if (!efficiencyValid) {
                         buff[0] = buff[1] = buff[2] = buff[3] = '-';
@@ -3267,7 +3271,11 @@ static bool osdDrawSingleElement(uint8_t item)
                     if (!moreThanAh) {
                         tfp_sprintf(buff, "%s%c%c", buff, SYM_MAH_KM_0, SYM_MAH_KM_1);
                     } else {
-                        tfp_sprintf(buff, "%s%c", buff, SYM_AH_KM);
+                        if (bfcompat) {
+                            tfp_sprintf(buff, "%sAHK", buff);   // Use AHK as Ah/km in BFCOMPAT mode
+                        } else {
+                            tfp_sprintf(buff, "%s%c", buff, SYM_AH_KM);
+                        }
                     }
                     if (!efficiencyValid) {
                         buff[0] = buff[1] = buff[2] = buff[3] = '-';
