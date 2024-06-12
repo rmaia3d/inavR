@@ -3750,8 +3750,15 @@ static bool osdDrawSingleElement(uint8_t item)
                     digits = 4U;
                 }            
                 bool kiloWatt = osdFormatCentiNumber(buff, powerLimiterGetActivePowerLimit(), 1000, 2, 2, digits, false);
-                buff[digits] = kiloWatt ? SYM_KILOWATT : SYM_WATT;
-                buff[digits + 1U] = '\0';
+                if(bfcompat && kiloWatt) {
+                    // extended buffer for kiloWatts only
+                    buff[digits] = 'K';
+                    buff[digits + 1U] = 'W';
+                    buff[digits + 2U] = '\0';
+                } else {
+                    buff[digits] = kiloWatt ? SYM_KILOWATT : SYM_WATT;
+                    buff[digits + 1U] = '\0';
+                }
 
                 if (powerLimiterIsLimitingPower()) {
                     TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
