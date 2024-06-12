@@ -7,7 +7,7 @@ I started this fork to be able to share with the rest of the community some chan
 Most of the changes so far are focused on the DJI O3 OSD, which the official implementation has left a lot to be desired, and internal politics prevented most of these improvements from being merged into the main Inav code. 
 
 Here's an example of the O3 OSD that's possible with this fork:
-![O3_OSD_improved](InavR_O3_OSD_prev1.JPG)
+![O3_OSD_improved](InavR_O3_OSD_prev2.JPG)
 
 These changes are added on top of the most recently released official version of Inav (7.1.1).
 
