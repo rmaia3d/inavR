@@ -3128,8 +3128,16 @@ static bool osdDrawSingleElement(uint8_t item)
             // RTC not configured will show 00:00
             dateTime_t dateTime;
             rtcGetDateTimeLocal(&dateTime);
-            buff[0] = SYM_CLOCK;
-            tfp_sprintf(buff + 1, "%02u:%02u:%02u", dateTime.hours, dateTime.minutes, dateTime.seconds);
+            uint8_t buff_offset = 1U;
+            if (bfcompat) {
+                buff[0] = 'R';
+                buff[1] = 'T';
+                buff[2] = 'C';  // Use RTC as clock label
+                buff_offset = 3U;
+            } else {
+                buff[0] = SYM_CLOCK;
+            }
+            tfp_sprintf(buff + buff_offset, "%02u:%02u:%02u", dateTime.hours, dateTime.minutes, dateTime.seconds);
             break;
         }
 
@@ -3516,8 +3524,16 @@ static bool osdDrawSingleElement(uint8_t item)
 
     case OSD_AZIMUTH:
         {
-
-            buff[0] = SYM_AZIMUTH;
+            uint8_t buff_offset = 1U;
+            uint8_t deg_offset = 4U;
+            if (bfcompat) {
+                buff[0] = 'A';
+                buff[1] = 'Z';  // Use AZ as azimuth label
+                buff_offset = 2U;
+                deg_offset = 5U;
+            } else {
+                buff[0] = SYM_AZIMUTH;
+            }
             if (osdIsHeadingValid()) {
                 int16_t h = GPS_directionToHome;
                 if (h < 0) {
@@ -3528,12 +3544,12 @@ static bool osdDrawSingleElement(uint8_t item)
                 else
                     h = h + 180;
 
-                tfp_sprintf(&buff[1], "%3d", h);
+                tfp_sprintf(&buff[buff_offset], "%3d", h);
             } else {
-                buff[1] = buff[2] = buff[3] = '-';
+                buff[buff_offset] = buff[buff_offset + 1U] = buff[buff_offset + 2U] = '-';
             }
-            buff[4] = SYM_DEGREES;
-            buff[5] = '\0';
+            buff[deg_offset] = SYM_DEGREES;
+            buff[deg_offset + 1U] = '\0';
             break;
         }
 
