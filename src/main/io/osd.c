@@ -2019,32 +2019,62 @@ static bool osdDrawSingleElement(uint8_t item)
 
     case OSD_ODOMETER:
         {
-            displayWriteChar(osdDisplayPort, elemPosX, elemPosY, SYM_ODOMETER);
+            if(bfcompat) {
+                buff[0] = 'O';
+                buff[1] = 'D';  // Use OD as Odometer abbreviation
+            } else {
+                displayWriteChar(osdDisplayPort, elemPosX, elemPosY, SYM_ODOMETER);
+            }
             float_t odometerDist = CENTIMETERS_TO_METERS(getTotalTravelDistance());
 #ifdef USE_STATS
             odometerDist+= statsConfig()->stats_total_dist;
 #endif
-
+            uint8_t digits = 6U;
+            uint8_t eol = 7U;
+            uint8_t buff_offset = 0U;
+            if (bfcompat) {
+                digits = 7U;
+                eol = 8U;
+                buff_offset = 2U;   // To account for abbreviation letters
+            }
             switch (osdConfig()->units) {
                 case OSD_UNIT_UK:
                     FALLTHROUGH;
                 case OSD_UNIT_IMPERIAL:
-                    osdFormatCentiNumber(buff, METERS_TO_MILES(odometerDist) * 100, 1, 1, 1, 6, true);
-                    buff[6] = SYM_MI;
+                    osdFormatCentiNumber(buff + buff_offset, METERS_TO_MILES(odometerDist) * 100, 1, 1, 1, digits, true);
+                    if (bfcompat) {
+                        buff[digits + buff_offset] = 'M';
+                        buff[digits + buff_offset + 1U] = 'I';
+                        eol = digits + buff_offset + 2U;
+                    } else {
+                        buff[6] = SYM_MI;
+                    }
                     break;
                 default:
                 case OSD_UNIT_GA:
-                    osdFormatCentiNumber(buff, METERS_TO_NAUTICALMILES(odometerDist) * 100, 1, 1, 1, 6, true);
-                    buff[6] = SYM_NM;
+                    osdFormatCentiNumber(buff + buff_offset, METERS_TO_NAUTICALMILES(odometerDist) * 100, 1, 1, 1, digits, true);
+                    if (bfcompat) {
+                        buff[digits + buff_offset] = 'N';
+                        buff[digits + buff_offset + 1U] = 'M';
+                        eol = digits + buff_offset + 2U;
+                    } else {
+                        buff[6] = SYM_NM;
+                    }
                     break;
                 case OSD_UNIT_METRIC_MPH:
                     FALLTHROUGH;
                 case OSD_UNIT_METRIC:
-                    osdFormatCentiNumber(buff, METERS_TO_KILOMETERS(odometerDist) * 100, 1, 1, 1, 6, true);
-                    buff[6] = SYM_KM;
+                    osdFormatCentiNumber(buff + buff_offset, METERS_TO_KILOMETERS(odometerDist) * 100, 1, 1, 1, digits, true);
+                    if (bfcompat) {
+                        buff[digits + buff_offset] = 'K';
+                        buff[digits + buff_offset + 1U] = 'M';
+                        eol = digits + buff_offset + 2U;
+                    } else {
+                        buff[6] = SYM_KM;
+                    }
                     break;
             }
-            buff[7] = '\0';
+            buff[eol] = '\0';
             elemPosX++;
         }
         break;
