@@ -1850,8 +1850,19 @@ static bool osdDrawSingleElement(uint8_t item)
             osdFormatCentiNumber(buff + 1, getBatteryRemainingCapacity() / 10, 0, 2, 0, 3, false);
 
         if (!unitsDrawn) {
-            buff[4] = currentBatteryProfile->capacity.unit == BAT_CAPACITY_UNIT_MAH ? SYM_MAH : SYM_WH;
-            buff[5] = '\0';
+            if (bfcompat) {
+                if (currentBatteryProfile->capacity.unit == BAT_CAPACITY_UNIT_MAH) {
+                    buff[4] = SYM_MAH;
+                    buff[5] = '\0';
+                } else {
+                    buff[4] = 'W';
+                    buff[5] = 'H';
+                    buff[6] = '\0';
+                }
+            } else {
+                buff[4] = currentBatteryProfile->capacity.unit == BAT_CAPACITY_UNIT_MAH ? SYM_MAH : SYM_WH;
+                buff[5] = '\0';
+            }
         }
 
         if (batteryUsesCapacityThresholds()) {
