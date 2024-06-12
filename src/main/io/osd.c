@@ -1804,12 +1804,20 @@ static bool osdDrawSingleElement(uint8_t item)
     }
 
     case OSD_WH_DRAWN:
-        osdFormatCentiNumber(buff, getMWhDrawn() / 10, 0, 2, 0, 3, false);
+    {
+        uint8_t digits = bfcompat ? 4U : 3U;
+        osdFormatCentiNumber(buff, getMWhDrawn() / 10, 0, 2, 0, digits, false);
         osdUpdateBatteryCapacityOrVoltageTextAttributes(&elemAttr);
-        buff[3] = SYM_WH;
-        buff[4] = '\0';
+        if (bfcompat) {
+            buff[digits] = 'W';
+            buff[digits + 1U] = 'H';
+            buff[digits + 2U] = '\0';
+        } else {
+            buff[3] = SYM_WH;
+            buff[4] = '\0';
+        }
         break;
-
+    }
     case OSD_BATTERY_REMAINING_CAPACITY:
     {
         bool unitsDrawn = false;
