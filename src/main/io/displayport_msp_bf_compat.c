@@ -283,13 +283,13 @@ uint8_t getBfCharacter(uint8_t ch, uint8_t page)
 /*
     case SYM_KT:
         return BF_SYM_KT
-
+*/
     case SYM_MAH_MI_0:
-        return BF_SYM_MAH_MI_0;
+        return BF_SYM_MAH;
 
     case SYM_MAH_MI_1:
-        return BF_SYM_MAH_MI_1;
-*/
+        return 'M';     // M standing in for "Miles"
+
     case SYM_THR:
         return BF_SYM_THR;
 
