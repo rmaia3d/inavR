@@ -3214,7 +3214,7 @@ static bool osdDrawSingleElement(uint8_t item)
 
     case OSD_VERSION:
         {
-            tfp_sprintf(buff, "INAV %s", FC_VERSION_STRING);
+            tfp_sprintf(buff, "INAVR %s", FC_VERSION_STRING);
             displayWrite(osdDisplayPort, elemPosX, elemPosY, buff);
             break;
         }
@@ -4937,7 +4937,7 @@ static void osdShowHDArmScreen(void)
         armScreenRow++;
     }
 
-    tfp_sprintf(versionBuf, "INAV VERSION: %s", FC_VERSION_STRING);
+    tfp_sprintf(versionBuf, "INAVR VERSION: %s", FC_VERSION_STRING);
     displayWrite(osdDisplayPort, (osdDisplayPort->cols - strlen(versionBuf)) / 2, armScreenRow++, versionBuf);
     armScreenRow++;
 
@@ -5022,7 +5022,7 @@ static void osdShowSDArmScreen(void)
         armScreenRow++;
     }
 
-    tfp_sprintf(versionBuf, "INAV VERSION: %s", FC_VERSION_STRING);
+    tfp_sprintf(versionBuf, "INAVR VERSION: %s", FC_VERSION_STRING);
     displayWrite(osdDisplayPort, (osdDisplayPort->cols - strlen(versionBuf)) / 2, armScreenRow++, versionBuf);
     armScreenRow++;
 
