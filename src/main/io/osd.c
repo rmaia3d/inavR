@@ -3307,26 +3307,42 @@ static bool osdDrawSingleElement(uint8_t item)
                     value = eFilterState.state;
                 }
             }
+            uint8_t digits = bfcompat ? 4U : 3U;
+            uint8_t eot_offset = 1U;
             bool efficiencyValid = (value > 0) && (gpsSol.groundSpeed > 100);
             switch (osdConfig()->units) {
                 case OSD_UNIT_UK:
                     FALLTHROUGH;
                 case OSD_UNIT_IMPERIAL:
-                    osdFormatCentiNumber(buff, value * METERS_PER_MILE / 10000, 0, 2, 0, 3, false);
-                    buff[3] = SYM_WH_MI;
+                    osdFormatCentiNumber(buff, value * METERS_PER_MILE / 10000, 0, 2, 0, digits, false);
+                    if (bfcompat) {
+                        buff[digits] = 'W';
+                        buff[digits + 1U] = 'H';
+                        buff[digits + 2U] = 'M';    // Use WHM as Wh/miles label
+                        eot_offset = 3U;
+                    } else {
+                        buff[digits] = SYM_WH_MI;
+                    }
                     break;
                 case OSD_UNIT_GA:
-                    osdFormatCentiNumber(buff, value * METERS_PER_NAUTICALMILE / 10000, 0, 2, 0, 3, false);
+                    osdFormatCentiNumber(buff, value * METERS_PER_NAUTICALMILE / 10000, 0, 2, 0, digits, false);
                     buff[3] = SYM_WH_NM;
                     break;
                 case OSD_UNIT_METRIC_MPH:
                     FALLTHROUGH;
                 case OSD_UNIT_METRIC:
-                    osdFormatCentiNumber(buff, value / 10, 0, 2, 0, 3, false);
-                    buff[3] = SYM_WH_KM;
+                    osdFormatCentiNumber(buff, value / 10, 0, 2, 0, digits, false);
+                    if (bfcompat) {
+                        buff[digits] = 'W';
+                        buff[digits + 1U] = 'H';
+                        buff[digits + 2U] = 'K';     // Use WHK as Wh/km label
+                        eot_offset = 3U;
+                    } else {
+                        buff[3] = SYM_WH_KM;
+                    }
                     break;
             }
-            buff[4] = '\0';
+            buff[digits + eot_offset] = '\0';
             if (!efficiencyValid) {
                 buff[0] = buff[1] = buff[2] = '-';
             }
