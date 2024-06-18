@@ -1820,12 +1820,20 @@ static bool osdDrawSingleElement(uint8_t item)
     }
 
     case OSD_WH_DRAWN:
-        osdFormatCentiNumber(buff, getMWhDrawn() / 10, 0, 2, 0, 3, false);
+    {
+        uint8_t digits = bfcompat ? 4U : 3U;
+        osdFormatCentiNumber(buff, getMWhDrawn() / 10, 0, 2, 0, digits, false);
         osdUpdateBatteryCapacityOrVoltageTextAttributes(&elemAttr);
-        buff[3] = SYM_WH;
-        buff[4] = '\0';
+        if (bfcompat) {
+            buff[digits] = 'W';
+            buff[digits + 1U] = 'H';
+            buff[digits + 2U] = '\0';
+        } else {
+            buff[3] = SYM_WH;
+            buff[4] = '\0';
+        }
         break;
-
+    }
     case OSD_BATTERY_REMAINING_CAPACITY:
     {
         bool unitsDrawn = false;
@@ -1858,8 +1866,19 @@ static bool osdDrawSingleElement(uint8_t item)
             osdFormatCentiNumber(buff + 1, getBatteryRemainingCapacity() / 10, 0, 2, 0, 3, false);
 
         if (!unitsDrawn) {
-            buff[4] = currentBatteryProfile->capacity.unit == BAT_CAPACITY_UNIT_MAH ? SYM_MAH : SYM_WH;
-            buff[5] = '\0';
+            if (bfcompat) {
+                if (currentBatteryProfile->capacity.unit == BAT_CAPACITY_UNIT_MAH) {
+                    buff[4] = SYM_MAH;
+                    buff[5] = '\0';
+                } else {
+                    buff[4] = 'W';
+                    buff[5] = 'H';
+                    buff[6] = '\0';
+                }
+            } else {
+                buff[4] = currentBatteryProfile->capacity.unit == BAT_CAPACITY_UNIT_MAH ? SYM_MAH : SYM_WH;
+                buff[5] = '\0';
+            }
         }
 
         if (batteryUsesCapacityThresholds()) {
@@ -2016,46 +2035,84 @@ static bool osdDrawSingleElement(uint8_t item)
 
     case OSD_ODOMETER:
         {
-            displayWriteChar(osdDisplayPort, elemPosX, elemPosY, SYM_ODOMETER);
+            if(bfcompat) {
+                buff[0] = 'O';
+                buff[1] = 'D';  // Use OD as Odometer abbreviation
+            } else {
+                displayWriteChar(osdDisplayPort, elemPosX, elemPosY, SYM_ODOMETER);
+            }
             float_t odometerDist = CENTIMETERS_TO_METERS(getTotalTravelDistance());
 #ifdef USE_STATS
             odometerDist+= statsConfig()->stats_total_dist;
 #endif
-
+            uint8_t digits = 6U;
+            uint8_t eol = 7U;
+            uint8_t buff_offset = 0U;
+            if (bfcompat) {
+                digits = 7U;
+                eol = 8U;
+                buff_offset = 2U;   // To account for abbreviation letters
+            }
             switch (osdConfig()->units) {
                 case OSD_UNIT_UK:
                     FALLTHROUGH;
                 case OSD_UNIT_IMPERIAL:
-                    osdFormatCentiNumber(buff, METERS_TO_MILES(odometerDist) * 100, 1, 1, 1, 6, true);
-                    buff[6] = SYM_MI;
+                    osdFormatCentiNumber(buff + buff_offset, METERS_TO_MILES(odometerDist) * 100, 1, 1, 1, digits, true);
+                    if (bfcompat) {
+                        buff[digits + buff_offset] = 'M';
+                        buff[digits + buff_offset + 1U] = 'I';
+                        eol = digits + buff_offset + 2U;
+                    } else {
+                        buff[6] = SYM_MI;
+                    }
                     break;
                 default:
                 case OSD_UNIT_GA:
-                    osdFormatCentiNumber(buff, METERS_TO_NAUTICALMILES(odometerDist) * 100, 1, 1, 1, 6, true);
-                    buff[6] = SYM_NM;
+                    osdFormatCentiNumber(buff + buff_offset, METERS_TO_NAUTICALMILES(odometerDist) * 100, 1, 1, 1, digits, true);
+                    if (bfcompat) {
+                        buff[digits + buff_offset] = 'N';
+                        buff[digits + buff_offset + 1U] = 'M';
+                        eol = digits + buff_offset + 2U;
+                    } else {
+                        buff[6] = SYM_NM;
+                    }
                     break;
                 case OSD_UNIT_METRIC_MPH:
                     FALLTHROUGH;
                 case OSD_UNIT_METRIC:
-                    osdFormatCentiNumber(buff, METERS_TO_KILOMETERS(odometerDist) * 100, 1, 1, 1, 6, true);
-                    buff[6] = SYM_KM;
+                    osdFormatCentiNumber(buff + buff_offset, METERS_TO_KILOMETERS(odometerDist) * 100, 1, 1, 1, digits, true);
+                    if (bfcompat) {
+                        buff[digits + buff_offset] = 'K';
+                        buff[digits + buff_offset + 1U] = 'M';
+                        eol = digits + buff_offset + 2U;
+                    } else {
+                        buff[6] = SYM_KM;
+                    }
                     break;
             }
-            buff[7] = '\0';
+            buff[eol] = '\0';
             elemPosX++;
         }
         break;
 
     case OSD_GROUND_COURSE:
         {
-            buff[0] = SYM_GROUND_COURSE;
-            if (osdIsHeadingValid()) {
-                tfp_sprintf(&buff[1], "%3d", (int16_t)CENTIDEGREES_TO_DEGREES(posControl.actualState.cog));
+            uint8_t buff_offset = 1U;
+            if (bfcompat) {
+                buff[0] = 'C';
+                buff[1] = 'R';
+                buff[2] = 'S';  // Use CRS as Course abbreviation
+                buff_offset = 3U;
             } else {
-                buff[1] = buff[2] = buff[3] = '-';
+                buff[0] = SYM_GROUND_COURSE;
             }
-            buff[4] = SYM_DEGREES;
-            buff[5] = '\0';
+            if (osdIsHeadingValid()) {
+                tfp_sprintf(&buff[buff_offset], "%3d", (int16_t)CENTIDEGREES_TO_DEGREES(posControl.actualState.cog));
+            } else {
+                buff[buff_offset] = buff[buff_offset + 1U] = buff[buff_offset + 2U] = '-';
+            }
+            buff[buff_offset + 3U] = SYM_DEGREES;
+            buff[buff_offset + 4U] = '\0';
             break;
         }
 
@@ -3125,8 +3182,16 @@ static bool osdDrawSingleElement(uint8_t item)
             // RTC not configured will show 00:00
             dateTime_t dateTime;
             rtcGetDateTimeLocal(&dateTime);
-            buff[0] = SYM_CLOCK;
-            tfp_sprintf(buff + 1, "%02u:%02u:%02u", dateTime.hours, dateTime.minutes, dateTime.seconds);
+            uint8_t buff_offset = 1U;
+            if (bfcompat) {
+                buff[0] = 'R';
+                buff[1] = 'T';
+                buff[2] = 'C';  // Use RTC as clock label
+                buff_offset = 3U;
+            } else {
+                buff[0] = SYM_CLOCK;
+            }
+            tfp_sprintf(buff + buff_offset, "%02u:%02u:%02u", dateTime.hours, dateTime.minutes, dateTime.seconds);
             break;
         }
 
@@ -3234,7 +3299,11 @@ static bool osdDrawSingleElement(uint8_t item)
                     if (!moreThanAh) {
                         tfp_sprintf(buff, "%s%c%c", buff, SYM_MAH_MI_0, SYM_MAH_MI_1);
                     } else {
-                        tfp_sprintf(buff, "%s%c", buff, SYM_AH_MI);
+                        if(bfcompat) {
+                            tfp_sprintf(buff, "%sAHM", buff);   // Use AHM as Ah/miles in BFCOMPAT mode
+                        } else {
+                            tfp_sprintf(buff, "%s%c", buff, SYM_AH_MI);
+                        }
                     }
                     if (!efficiencyValid) {
                         buff[0] = buff[1] = buff[2] = buff[3] = '-';
@@ -3264,7 +3333,11 @@ static bool osdDrawSingleElement(uint8_t item)
                     if (!moreThanAh) {
                         tfp_sprintf(buff, "%s%c%c", buff, SYM_MAH_KM_0, SYM_MAH_KM_1);
                     } else {
-                        tfp_sprintf(buff, "%s%c", buff, SYM_AH_KM);
+                        if (bfcompat) {
+                            tfp_sprintf(buff, "%sAHK", buff);   // Use AHK as Ah/km in BFCOMPAT mode
+                        } else {
+                            tfp_sprintf(buff, "%s%c", buff, SYM_AH_KM);
+                        }
                     }
                     if (!efficiencyValid) {
                         buff[0] = buff[1] = buff[2] = buff[3] = '-';
@@ -3296,26 +3369,42 @@ static bool osdDrawSingleElement(uint8_t item)
                     value = eFilterState.state;
                 }
             }
+            uint8_t digits = bfcompat ? 4U : 3U;
+            uint8_t eot_offset = 1U;
             bool efficiencyValid = (value > 0) && (gpsSol.groundSpeed > 100);
             switch (osdConfig()->units) {
                 case OSD_UNIT_UK:
                     FALLTHROUGH;
                 case OSD_UNIT_IMPERIAL:
-                    osdFormatCentiNumber(buff, value * METERS_PER_MILE / 10000, 0, 2, 0, 3, false);
-                    buff[3] = SYM_WH_MI;
+                    osdFormatCentiNumber(buff, value * METERS_PER_MILE / 10000, 0, 2, 0, digits, false);
+                    if (bfcompat) {
+                        buff[digits] = 'W';
+                        buff[digits + 1U] = 'H';
+                        buff[digits + 2U] = 'M';    // Use WHM as Wh/miles label
+                        eot_offset = 3U;
+                    } else {
+                        buff[digits] = SYM_WH_MI;
+                    }
                     break;
                 case OSD_UNIT_GA:
-                    osdFormatCentiNumber(buff, value * METERS_PER_NAUTICALMILE / 10000, 0, 2, 0, 3, false);
+                    osdFormatCentiNumber(buff, value * METERS_PER_NAUTICALMILE / 10000, 0, 2, 0, digits, false);
                     buff[3] = SYM_WH_NM;
                     break;
                 case OSD_UNIT_METRIC_MPH:
                     FALLTHROUGH;
                 case OSD_UNIT_METRIC:
-                    osdFormatCentiNumber(buff, value / 10, 0, 2, 0, 3, false);
-                    buff[3] = SYM_WH_KM;
+                    osdFormatCentiNumber(buff, value / 10, 0, 2, 0, digits, false);
+                    if (bfcompat) {
+                        buff[digits] = 'W';
+                        buff[digits + 1U] = 'H';
+                        buff[digits + 2U] = 'K';     // Use WHK as Wh/km label
+                        eot_offset = 3U;
+                    } else {
+                        buff[3] = SYM_WH_KM;
+                    }
                     break;
             }
-            buff[4] = '\0';
+            buff[digits + eot_offset] = '\0';
             if (!efficiencyValid) {
                 buff[0] = buff[1] = buff[2] = '-';
             }
@@ -3489,8 +3578,16 @@ static bool osdDrawSingleElement(uint8_t item)
 
     case OSD_AZIMUTH:
         {
-
-            buff[0] = SYM_AZIMUTH;
+            uint8_t buff_offset = 1U;
+            uint8_t deg_offset = 4U;
+            if (bfcompat) {
+                buff[0] = 'A';
+                buff[1] = 'Z';  // Use AZ as azimuth label
+                buff_offset = 2U;
+                deg_offset = 5U;
+            } else {
+                buff[0] = SYM_AZIMUTH;
+            }
             if (osdIsHeadingValid()) {
                 int16_t h = GPS_directionToHome;
                 if (h < 0) {
@@ -3501,12 +3598,12 @@ static bool osdDrawSingleElement(uint8_t item)
                 else
                     h = h + 180;
 
-                tfp_sprintf(&buff[1], "%3d", h);
+                tfp_sprintf(&buff[buff_offset], "%3d", h);
             } else {
-                buff[1] = buff[2] = buff[3] = '-';
+                buff[buff_offset] = buff[buff_offset + 1U] = buff[buff_offset + 2U] = '-';
             }
-            buff[4] = SYM_DEGREES;
-            buff[5] = '\0';
+            buff[deg_offset] = SYM_DEGREES;
+            buff[deg_offset + 1U] = '\0';
             break;
         }
 
@@ -3747,8 +3844,15 @@ static bool osdDrawSingleElement(uint8_t item)
                     digits = 4U;
                 }            
                 bool kiloWatt = osdFormatCentiNumber(buff, powerLimiterGetActivePowerLimit(), 1000, 2, 2, digits, false);
-                buff[digits] = kiloWatt ? SYM_KILOWATT : SYM_WATT;
-                buff[digits + 1U] = '\0';
+                if(bfcompat && kiloWatt) {
+                    // extended buffer for kiloWatts only
+                    buff[digits] = 'K';
+                    buff[digits + 1U] = 'W';
+                    buff[digits + 2U] = '\0';
+                } else {
+                    buff[digits] = kiloWatt ? SYM_KILOWATT : SYM_WATT;
+                    buff[digits + 1U] = '\0';
+                }
 
                 if (powerLimiterIsLimitingPower()) {
                     TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
@@ -4491,6 +4595,14 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
     const uint8_t statValuesX = osdDisplayIsHD() ? 30 : 20;
     char buff[10];
 
+    // Single BFCOMPAT check for the function
+    bool bfcompat = false;
+#ifndef DISABLE_MSP_BF_COMPAT // IF BFCOMPAT is not supported, there's no need to check for it and change the values
+    if (isBfCompatibleVideoSystem(osdConfig())) {
+        bfcompat = true;
+    }            
+#endif
+
     if (page > 1)
         page = 0;
 
@@ -4552,7 +4664,11 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
                     multiValueLengthOffset = strlen(buff);
                     displayWrite(osdDisplayPort, statValuesX, top, buff);
                     itoa(stats.min_rssi_dbm, buff, 10);
-                    tfp_sprintf(buff, "%s%c", buff, SYM_DBM);
+                    if(bfcompat) {
+                        tfp_sprintf(buff, "%sDBM", buff);
+                    } else {
+                        tfp_sprintf(buff, "%s%c", buff, SYM_DBM);
+                    }
                     osdLeftAlignString(buff);
                     displayWrite(osdDisplayPort, statValuesX + multiValueLengthOffset, top++, buff);
                 } else {
@@ -4563,7 +4679,11 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
 
                     displayWrite(osdDisplayPort, statNameX, top, "MIN RSSI DBM     :");
                     itoa(stats.min_rssi_dbm, buff, 10);
-                    tfp_sprintf(buff, "%s%c", buff, SYM_DBM);
+                    if(bfcompat) {
+                        tfp_sprintf(buff, "%sDBM", buff);
+                    } else {
+                        tfp_sprintf(buff, "%s%c", buff, SYM_DBM);
+                    }
                     displayWrite(osdDisplayPort, statValuesX, top++, buff);
                 }
 
@@ -4612,13 +4732,9 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
             displayWrite(osdDisplayPort, statNameX, top, "MAX POWER        :");
             uint8_t digits = 3U;
             bool kiloWatt = false;
-            bool bfcompat = false;
-            #ifndef DISABLE_MSP_BF_COMPAT // IF BFCOMPAT is not supported, there's no need to check for it and change the values
-                if (isBfCompatibleVideoSystem(osdConfig())) {
-                    digits = 4U;
-                    bfcompat = true;
-                }            
-            #endif
+            if (bfcompat) {
+                digits = 4U;
+            }            
             kiloWatt = osdFormatCentiNumber(buff, stats.max_power, 1000, 2, 2, digits, false);            
             if (bfcompat) {
                 buff[digits] = kiloWatt ? 'K' : SYM_WATT;
@@ -4635,7 +4751,11 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
                 tfp_sprintf(buff, "%d%c", (int)getMAhDrawn(), SYM_MAH);
             } else {
                 osdFormatCentiNumber(buff, getMWhDrawn() / 10, 0, 2, 0, 3, false);
-                tfp_sprintf(buff, "%s%c", buff, SYM_WH);
+                if (bfcompat) {
+                    tfp_sprintf(buff, "%sWH", buff);
+                } else {
+                    tfp_sprintf(buff, "%s%c", buff, SYM_WH);
+                }
             }
             displayWrite(osdDisplayPort, statValuesX, top++, buff);
 
@@ -4658,7 +4778,11 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
                             if (!moreThanAh) {
                                 tfp_sprintf(buff, "%s%c%c", buff, SYM_MAH_MI_0, SYM_MAH_MI_1);
                             } else {
-                                tfp_sprintf(buff, "%s%c", buff, SYM_AH_MI);
+                                if (bfcompat) {
+                                    tfp_sprintf(buff, "%sAHM", buff);
+                                } else {
+                                    tfp_sprintf(buff, "%s%c", buff, SYM_AH_MI);
+                                }
                             }
                             if (!efficiencyValid) {
                                 buff[0] = buff[1] = buff[2] = '-';
@@ -4668,7 +4792,11 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
                             }
                         } else {
                             osdFormatCentiNumber(buff, (int32_t)(getMWhDrawn() * 10.0f * METERS_PER_MILE / totalDistance), 0, 2, 0, digits, false);
-                            tfp_sprintf(buff, "%s%c", buff, SYM_WH_MI);
+                            if (bfcompat) {
+                                tfp_sprintf(buff, "%sWHM", buff);
+                            } else {
+                                tfp_sprintf(buff, "%s%c", buff, SYM_WH_MI);
+                            }
                             if (!efficiencyValid) {
                                 buff[0] = buff[1] = buff[2] = '-';
                             }
@@ -4704,7 +4832,11 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
                             if (!moreThanAh) {
                                 tfp_sprintf(buff, "%s%c%c", buff, SYM_MAH_KM_0, SYM_MAH_KM_1);
                             } else {
-                                tfp_sprintf(buff, "%s%c", buff, SYM_AH_KM);
+                                if (bfcompat) {
+                                    tfp_sprintf(buff, "%sAHK", buff);
+                                } else {
+                                    tfp_sprintf(buff, "%s%c", buff, SYM_AH_KM);
+                                }
                             }
                             if (!efficiencyValid) {
                                 buff[0] = buff[1] = buff[2] = '-';
@@ -4714,7 +4846,11 @@ static void osdShowStats(bool isSinglePageStatsCompatible, uint8_t page)
                             }
                         } else {
                             osdFormatCentiNumber(buff, (int32_t)(getMWhDrawn() * 10000.0f / totalDistance), 0, 2, 0, digits, false);
-                            tfp_sprintf(buff, "%s%c", buff, SYM_WH_KM);
+                            if (bfcompat) {
+                                tfp_sprintf(buff, "%sWHK", buff);
+                            } else {
+                                tfp_sprintf(buff, "%s%c", buff, SYM_WH_KM);
+                            }
                             if (!efficiencyValid) {
                                 buff[0] = buff[1] = buff[2] = '-';
                             }
