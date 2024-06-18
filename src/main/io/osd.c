@@ -479,21 +479,25 @@ void osdFormatAltitudeSymbol(char *buff, int32_t alt)
     uint8_t totalDigits = 4U;
     uint8_t digits = 4U;
     uint8_t symbolIndex = 4U;
-    uint8_t symbolKFt = SYM_ALT_KFT;
+
+    bool bfcompat = false;
+#ifndef DISABLE_MSP_BF_COMPAT   // IF BFCOMPAT is not supported, there's no need to check for it and change the values
+    if (isBfCompatibleVideoSystem(osdConfig())) {
+        bfcompat = true;
+    }
+#endif
 
     if (alt >= 0) {
         digits = 3U;
         buff[0] = ' ';
     }
 
-#ifndef DISABLE_MSP_BF_COMPAT   // IF BFCOMPAT is not supported, there's no need to check for it and change the values
-    if (isBfCompatibleVideoSystem(osdConfig())) {
+    if (bfcompat) {
+        // Add extra digit for BFCOMPAT mode
         totalDigits++;
         digits++;
         symbolIndex++;
-        symbolKFt = SYM_ALT_FT;
     }
-#endif
 
     switch ((osd_unit_e)osdConfig()->units) {
         case OSD_UNIT_UK:
@@ -501,15 +505,27 @@ void osdFormatAltitudeSymbol(char *buff, int32_t alt)
         case OSD_UNIT_GA:
             FALLTHROUGH;
         case OSD_UNIT_IMPERIAL:
+        {
+            // Add 2 extra digits so kilo-feet scaling only kicks in at or above 100k feet.
+            totalDigits += 2U;
+            digits += 2U;
+            symbolIndex += 2U;
             if (osdFormatCentiNumber(buff + totalDigits - digits, CENTIMETERS_TO_CENTIFEET(alt), 1000, 0, 2, digits, false)) {
                 // Scaled to kft
-                buff[symbolIndex++] = symbolKFt;
+                if(bfcompat) {
+                    // Add 'K' prefix
+                    buff[symbolIndex++] = 'K';
+                    buff[symbolIndex++] = SYM_ALT_FT;
+                } else {
+                    buff[symbolIndex++] = SYM_ALT_KFT;
+                }
             } else {
                 // Formatted in feet
                 buff[symbolIndex++] = SYM_ALT_FT;
             }
             buff[symbolIndex] = '\0';
             break;
+        }
         case OSD_UNIT_METRIC_MPH:
             FALLTHROUGH;
         case OSD_UNIT_METRIC:
