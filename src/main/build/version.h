@@ -21,7 +21,7 @@
 #ifndef FC_VERSION_TYPE
 #define FC_VERSION_TYPE ""
 #endif
-#define FC_FIRMWARE_NAME "INAV"
+#define FC_FIRMWARE_NAME "INAVR"
 
 
 #define MW_VERSION              231
