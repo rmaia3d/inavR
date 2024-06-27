@@ -1,3 +1,19 @@
+# INAVR - Custom fork of Inav
+
+This is an unofficial version of Inav, thus the added "R" to the end and also different versioning numbers.
+
+I started this fork to be able to share with the rest of the community some changes and improvements which I have been using on my own planes and quads for quite some time. 
+
+The improvements made so far are mainly focused on the DJI O3 OSD, which the official implementation has left a lot to be desired, and internal politics prevented most of the changes here from being merged into the main Inav code. 
+
+The software is still Inav through and through, so all the steps for flashing, configuring, tuning and adjusting are the same as the ones for the official version. 
+
+This branch "master" is a mirror of the master branch from the [official inav repo](https://github.com/iNavFlight/inav), which is currently in version 8 (work in progress, not released). From time to time, I will be pulling in snapshots from there to keep this branch up to date. Also, I haven't added any of my improvements to this version, but I plan to port them as time permits.
+
+For now, the changes are added on top of the most recently released version of Inav (7.1.1), which you can find on the [release_7.2.x branch](https://github.com/rmaia3d/inavR/tree/release_7.2.x) of this repo. 
+
+Below is the text from the official Inav readme.
+
 # INAV - navigation capable flight controller
 
 # F411 PSA

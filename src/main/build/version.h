@@ -23,7 +23,6 @@
 #endif
 #define FC_FIRMWARE_NAME "INAVR"
 
-
 #define MW_VERSION              231
 
 extern const char* const compilerVersion;
