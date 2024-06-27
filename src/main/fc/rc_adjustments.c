@@ -619,6 +619,23 @@ static void applyStepAdjustment(controlRateConfig_t *controlRateConfig, uint8_t 
     };
 }
 
+static void adjustFwCruiseThrFromChPosition(uint8_t ch_index)
+{
+    static uint16_t default_fw_cruise_thr = 0U; // Initialize to zero
+    const uint32_t now = millis();
+    if (default_fw_cruise_thr == 0U && now > 1000U) {
+        // Wait at least 1 second before updating the value to avoid any initialization errors
+        default_fw_cruise_thr = currentBatteryProfileMutable->nav.fw.cruise_throttle;
+    }
+
+    // Get adjustment value directly from adjustment channel distance from mid-point
+    int16_t adj_value = rxGetChannelValue(ch_index) - PWM_RANGE_MIDDLE;
+    int16_t new_value = default_fw_cruise_thr + adj_value;
+    new_value = constrain(new_value, currentBatteryProfileMutable->nav.fw.min_throttle, currentBatteryProfileMutable->nav.fw.max_throttle);
+    currentBatteryProfileMutable->nav.fw.cruise_throttle = new_value;
+    blackboxLogInflightAdjustmentEvent(ADJUSTMENT_NAV_FW_CRUISE_THR, new_value);
+}
+
 #ifdef USE_INFLIGHT_PROFILE_ADJUSTMENT
 static void applySelectAdjustment(uint8_t adjustmentFunction, uint8_t position)
 {
@@ -644,12 +661,7 @@ static void applySelectAdjustment(uint8_t adjustmentFunction, uint8_t position)
 
 void processRcAdjustments(controlRateConfig_t *controlRateConfig, bool canUseRxData)
 {
-    static uint16_t default_fw_cruise_thr = 0U; // Initialize to zero
     const uint32_t now = millis();
-    if (default_fw_cruise_thr == 0U && now > 1000U) {
-        // Wait at least 1 second before updating to value to avoid any initialization errors
-        default_fw_cruise_thr = currentBatteryProfileMutable->nav.fw.cruise_throttle;
-    }
 
     for (int adjustmentIndex = 0; adjustmentIndex < MAX_SIMULTANEOUS_ADJUSTMENT_COUNT; adjustmentIndex++) {
         adjustmentState_t * const adjustmentState = &adjustmentStates[adjustmentIndex];
@@ -676,14 +688,9 @@ void processRcAdjustments(controlRateConfig_t *controlRateConfig, bool canUseRxD
 
         const uint8_t channelIndex = NON_AUX_CHANNEL_COUNT + adjustmentState->auxChannelIndex;
 
-        // Different adjustment handling for ADJUSTMENT_NAV_FW_CRUISE_THR
         if (adjustmentFunction == ADJUSTMENT_NAV_FW_CRUISE_THR) {
-            // Get adjustment value directly from adjustment channel distance from mid-point
-            int16_t adj_value = rxGetChannelValue(channelIndex) - PWM_RANGE_MIDDLE;
-            int16_t new_value = default_fw_cruise_thr + adj_value;
-            new_value = constrain(new_value, SETTING_NAV_FW_CRUISE_THR_MIN, SETTING_NAV_FW_CRUISE_THR_MAX);
-            currentBatteryProfileMutable->nav.fw.cruise_throttle = new_value;
-            blackboxLogInflightAdjustmentEvent(adjustmentFunction, new_value);
+            // Different adjustment handling for ADJUSTMENT_NAV_FW_CRUISE_THR
+            adjustFwCruiseThrFromChPosition(channelIndex);
         } else if (adjustmentState->config->mode == ADJUSTMENT_MODE_STEP) {
             int delta;
             if (rxGetChannelValue(channelIndex) > PWM_RANGE_MIDDLE + 200) {
